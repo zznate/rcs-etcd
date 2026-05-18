@@ -30,7 +30,7 @@ public class EtcdBlobStore implements BlobStore {
 
     public EtcdBlobStore(Client client, String rootPrefix, String clusterName, long maxRequestBytes) {
         this.client = client;
-        this.tenantPrefix = buildTenantPrefix(rootPrefix, clusterName);
+        this.tenantPrefix = EtcdRepository.tenantPrefix(rootPrefix, clusterName);
         this.maxRequestBytes = maxRequestBytes;
     }
 
@@ -61,17 +61,9 @@ public class EtcdBlobStore implements BlobStore {
     String containerKeyPrefix(BlobPath path) {
         StringBuilder sb = new StringBuilder(tenantPrefix);
         for (String segment : path) {
-            sb.append('/').append(segment);
+            sb.append(EtcdRepository.B_P_SEPARATOR).append(segment);
         }
-        sb.append('/');
+        sb.append(EtcdRepository.B_P_SEPARATOR);
         return sb.toString();
-    }
-
-    static String buildTenantPrefix(String rootPrefix, String clusterName) {
-        String trimmed = (rootPrefix == null) ? "" : rootPrefix;
-        while (trimmed.endsWith("/")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
-        }
-        return trimmed + "/" + clusterName;
     }
 }

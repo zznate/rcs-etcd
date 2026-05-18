@@ -26,6 +26,13 @@ import java.util.List;
  */
 public class EtcdRepository extends BlobStoreRepository {
 
+    /**
+     * Separator used by OpenSearch's {@link BlobPath} and, by extension, by every etcd key
+     * this plugin writes. Defined once so callers do not sprinkle naked {@code "/"} literals
+     * across the codebase.
+     */
+    static final String B_P_SEPARATOR = "/";
+
     public static final Setting<List<String>> ENDPOINTS_SETTING = Setting.listSetting(
         "cluster.rcs_etcd.endpoints",
         List.of("http://localhost:2379"),
@@ -85,9 +92,18 @@ public class EtcdRepository extends BlobStoreRepository {
             return "";
         }
         String trimmed = raw;
-        while (trimmed.endsWith("/")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        while (trimmed.endsWith(B_P_SEPARATOR)) {
+            trimmed = trimmed.substring(0, trimmed.length() - B_P_SEPARATOR.length());
         }
         return trimmed;
+    }
+
+    /**
+     * Composes the multi-tenant key prefix {@code <normalized rootPrefix>/<clusterName>}.
+     * Single source of truth for the invariant — both {@link EtcdRepository} and
+     * {@link EtcdBlobStore} derive their tenant key namespace through this method.
+     */
+    static String tenantPrefix(String rootPrefix, String clusterName) {
+        return normalizePrefix(rootPrefix) + B_P_SEPARATOR + clusterName;
     }
 }

@@ -130,7 +130,7 @@ public class EtcdBlobContainer implements BlobContainer {
         Map<String, BlobMetadata> result = new HashMap<>();
         for (KeyValue entry : response.getKvs()) {
             String name = stripKeyPrefix(entry.getKey());
-            if (name.indexOf('/') >= 0) {
+            if (name.contains(EtcdRepository.B_P_SEPARATOR)) {
                 continue; // not a direct child of this container
             }
             result.put(name, new PlainBlobMetadata(name, entry.getValue().size()));
@@ -152,7 +152,7 @@ public class EtcdBlobContainer implements BlobContainer {
         List<BlobMetadata> result = new ArrayList<>(response.getKvs().size());
         for (KeyValue entry : response.getKvs()) {
             String name = stripKeyPrefix(entry.getKey());
-            if (name.indexOf('/') >= 0) {
+            if (name.contains(EtcdRepository.B_P_SEPARATOR)) {
                 continue;
             }
             result.add(new PlainBlobMetadata(name, entry.getValue().size()));
@@ -203,12 +203,7 @@ public class EtcdBlobContainer implements BlobContainer {
         if (blobNamePrefix == null || blobNamePrefix.isEmpty()) {
             return keyPrefix;
         }
-        byte[] prefixBytes = keyPrefix.getBytes();
-        byte[] nameBytes = blobNamePrefix.getBytes(StandardCharsets.UTF_8);
-        byte[] combined = new byte[prefixBytes.length + nameBytes.length];
-        System.arraycopy(prefixBytes, 0, combined, 0, prefixBytes.length);
-        System.arraycopy(nameBytes, 0, combined, prefixBytes.length, nameBytes.length);
-        return ByteSequence.from(combined);
+        return keyForBlob(blobNamePrefix);
     }
 
     private String stripKeyPrefix(ByteSequence key) {

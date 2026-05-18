@@ -10,28 +10,12 @@ import org.opensearch.common.blobstore.BlobPath;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the multi-tenant key-prefix invariant: every key written by the plugin is
- * namespaced under {@code <rootPrefix>/<clusterName>/}. See {@code project_multi_tenant_invariant}.
+ * Verifies the multi-tenant key-prefix invariant: every key produced by an
+ * {@link EtcdBlobStore} is namespaced under {@code <rootPrefix>/<clusterName>/}.
+ * See {@code project_multi_tenant_invariant}. Tenant-prefix derivation itself is
+ * covered by {@link EtcdRepositoryTests}.
  */
 public class EtcdBlobStoreTests {
-
-    @Test
-    public void buildTenantPrefixCombinesRootAndCluster() {
-        assertThat(EtcdBlobStore.buildTenantPrefix("/opensearch-rcs", "cluster-a"))
-            .isEqualTo("/opensearch-rcs/cluster-a");
-    }
-
-    @Test
-    public void buildTenantPrefixStripsTrailingSlashFromRoot() {
-        assertThat(EtcdBlobStore.buildTenantPrefix("/opensearch-rcs///", "cluster-a"))
-            .isEqualTo("/opensearch-rcs/cluster-a");
-    }
-
-    @Test
-    public void buildTenantPrefixToleratesEmptyRoot() {
-        assertThat(EtcdBlobStore.buildTenantPrefix("", "cluster-a"))
-            .isEqualTo("/cluster-a");
-    }
 
     @Test
     public void containerKeyPrefixIncludesPathSegmentsAndTrailingSlash() {

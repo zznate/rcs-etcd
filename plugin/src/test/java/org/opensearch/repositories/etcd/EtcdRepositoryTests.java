@@ -29,4 +29,21 @@ public class EtcdRepositoryTests {
     public void normalizePrefixReturnsEmptyForNullInput() {
         assertThat(EtcdRepository.normalizePrefix(null)).isEmpty();
     }
+
+    @Test
+    public void tenantPrefixCombinesRootAndCluster() {
+        assertThat(EtcdRepository.tenantPrefix("/opensearch-rcs", "cluster-a"))
+            .isEqualTo("/opensearch-rcs/cluster-a");
+    }
+
+    @Test
+    public void tenantPrefixStripsTrailingSlashFromRoot() {
+        assertThat(EtcdRepository.tenantPrefix("/opensearch-rcs///", "cluster-a"))
+            .isEqualTo("/opensearch-rcs/cluster-a");
+    }
+
+    @Test
+    public void tenantPrefixToleratesEmptyRoot() {
+        assertThat(EtcdRepository.tenantPrefix("", "cluster-a")).isEqualTo("/cluster-a");
+    }
 }
