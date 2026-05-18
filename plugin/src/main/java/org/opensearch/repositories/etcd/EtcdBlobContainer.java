@@ -38,9 +38,9 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Etcd-backed {@link BlobContainer}. Each blob maps 1:1 to an etcd key under
- * {@code <tenantPrefix>/<containerPath>/<blobName>}. RCS-relevant methods are implemented
- * directly; snapshot-only methods (e.g. {@link #writeBlobAtomic}) throw
- * {@link UnsupportedOperationException}.
+ * {@code <tenantPrefix>/<containerPath>/<blobName>}. Etcd's single-key put is atomic
+ * at the storage layer, so {@link #writeBlobAtomic} satisfies the contract by
+ * delegating to the same put path as {@link #writeBlob}.
  */
 public class EtcdBlobContainer implements BlobContainer {
 
@@ -105,10 +105,10 @@ public class EtcdBlobContainer implements BlobContainer {
     @Override
     public void writeBlobAtomic(String blobName, InputStream inputStream, long blobSize, boolean failIfAlreadyExists)
         throws IOException {
-        throw new UnsupportedOperationException(
-            "EtcdRepository is RCS-only; writeBlobAtomic is used for snapshot bookkeeping. "
-                + "Use a separate repository (e.g. repository-s3) for snapshots."
-        );
+        // Etcd's single-key put is atomic at the storage layer (either the new revision
+        // is observable to readers, or the prior one is — never a partial value), so
+        // writeBlob already satisfies the atomic-write contract.
+        writeBlob(blobName, inputStream, blobSize, failIfAlreadyExists);
     }
 
     @Override

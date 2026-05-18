@@ -13,9 +13,12 @@ the storage backend behind OpenSearch's [Remote Cluster State][rcs] (RCS) featur
 
 ## What it is not
 
-- **Not a snapshot repository.** The `BlobContainer` methods snapshots rely on
-  (notably `writeBlobAtomic`) throw `UnsupportedOperationException`. Use a separate
-  repository — typically `repository-s3` — for snapshots.
+- **Not a snapshot repository.** The `BlobContainer` surface is implemented in full
+  (including the atomic-write probe OpenSearch runs on repository registration), but
+  the snapshot-specific paths in `BlobStoreRepository` (e.g. shard-data uploads,
+  segment files) have not been validated against etcd and are not part of the
+  supported surface. Use a separate repository — typically `repository-s3` — for
+  snapshots.
 
 ## Compatibility
 

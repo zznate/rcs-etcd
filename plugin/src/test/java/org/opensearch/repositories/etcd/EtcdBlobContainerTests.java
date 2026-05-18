@@ -237,10 +237,13 @@ public class EtcdBlobContainerTests {
     }
 
     @Test
-    public void writeBlobAtomicAlwaysThrowsUnsupported() {
-        assertThatThrownBy(() -> container.writeBlobAtomic("x", inputOf(""), 0, false))
-            .isInstanceOf(UnsupportedOperationException.class)
-            .hasMessageContaining("RCS-only");
+    public void writeBlobAtomicDelegatesToPlainPut() throws IOException {
+        when(kv.put(any(), any())).thenReturn(CompletableFuture.completedFuture(mock(PutResponse.class)));
+
+        container.writeBlobAtomic("verify-token", inputOf("ok"), 2, false);
+
+        verify(kv).put(any(), any());
+        verify(kv, never()).txn();
     }
 
     private static InputStream inputOf(String s) {

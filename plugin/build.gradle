@@ -34,14 +34,87 @@ configurations {
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
+// Versions pinned to match OpenSearch 3.0.0's libs.versions.toml so classpath
+// resolution doesn't bring two copies of grpc/netty/guava when run inside the test JVM.
+ext {
+    grpcVersion     = '1.68.2'
+    // jetcd 0.8.6 pulls Vert.x 5.0.5, which requires Netty 4.2+ (uses
+    // io.netty.channel.MultiThreadIoEventLoopGroup, added in 4.2). OpenSearch
+    // 3.0.0 itself ships Netty 4.1.118.Final; the plugin classloader is isolated,
+    // so the plugin's Netty 4.2 does not clash with core's transport stack.
+    nettyVersion    = '4.2.13.Final'
+    guavaVersion    = '33.2.1-jre'
+    protobufVersion = '3.25.5'
+    failsafeVersion = '3.3.2'
+    slf4jVersion    = '1.7.36'
+    vertxVersion    = '5.0.5'
+}
+
 dependencies {
     // jetcd modules — declared explicitly because the opensearchplugin Gradle plugin
-    // strips transitives from the plugin classpath. Generated protobuf response types
-    // (jetcd-api) must be reachable for tests that mock jetcd-core response classes.
+    // strips transitives from the plugin classpath. Every dep below would otherwise
+    // arrive via jetcd-core's POM; with transitives off, each runtime class jetcd
+    // touches has to be listed by name.
     implementation "io.etcd:jetcd-core:${commonVersions.jetcd}"
     implementation "io.etcd:jetcd-api:${commonVersions.jetcd}"
     implementation "io.etcd:jetcd-common:${commonVersions.jetcd}"
     implementation "io.etcd:jetcd-grpc:${commonVersions.jetcd}"
+
+    // Guava — jetcd ClientBuilder uses com.google.common.base.Strings.
+    runtimeOnly "com.google.guava:guava:${guavaVersion}"
+    runtimeOnly "com.google.guava:failureaccess:1.0.2"
+    runtimeOnly "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava"
+
+    // Protobuf — jetcd-api carries generated protobuf message types.
+    runtimeOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
+    runtimeOnly "com.google.protobuf:protobuf-java-util:${protobufVersion}"
+    runtimeOnly "com.google.api.grpc:proto-google-common-protos:2.41.0"
+
+    // gRPC transport stack used by jetcd to talk to etcd.
+    implementation "io.grpc:grpc-api:${grpcVersion}"
+    implementation "io.grpc:grpc-context:${grpcVersion}"
+    runtimeOnly "io.grpc:grpc-core:${grpcVersion}"
+    implementation "io.grpc:grpc-netty:${grpcVersion}"
+    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+    implementation "io.grpc:grpc-protobuf-lite:${grpcVersion}"
+    implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation "io.grpc:grpc-util:${grpcVersion}"
+    runtimeOnly "io.grpc:grpc-grpclb:${grpcVersion}"
+
+    // Netty 4.2.x — underlies the gRPC transport. The codec module was split into
+    // base / compression sub-modules in 4.2 (Headers, ByteToMessageDecoder, etc.
+    // live in netty-codec-base now), so each sub-module is listed explicitly.
+    implementation "io.netty:netty-buffer:${nettyVersion}"
+    implementation "io.netty:netty-codec:${nettyVersion}"
+    implementation "io.netty:netty-codec-base:${nettyVersion}"
+    implementation "io.netty:netty-codec-compression:${nettyVersion}"
+    implementation "io.netty:netty-codec-dns:${nettyVersion}"
+    implementation "io.netty:netty-codec-http:${nettyVersion}"
+    implementation "io.netty:netty-codec-http2:${nettyVersion}"
+    implementation "io.netty:netty-codec-socks:${nettyVersion}"
+    implementation "io.netty:netty-common:${nettyVersion}"
+    implementation "io.netty:netty-handler:${nettyVersion}"
+    implementation "io.netty:netty-handler-proxy:${nettyVersion}"
+    implementation "io.netty:netty-resolver:${nettyVersion}"
+    implementation "io.netty:netty-resolver-dns:${nettyVersion}"
+    implementation "io.netty:netty-transport:${nettyVersion}"
+    implementation "io.netty:netty-transport-native-unix-common:${nettyVersion}"
+
+    // jetcd 0.8.x uses Vert.x gRPC for the channel implementation. vertx-core-logging
+    // hosts io.vertx.core.internal.logging.LoggerFactory, which vertx-core initialises
+    // eagerly.
+    implementation "io.vertx:vertx-grpc:${vertxVersion}"
+    implementation "io.vertx:vertx-core:${vertxVersion}"
+    implementation "io.vertx:vertx-core-logging:${vertxVersion}"
+
+    // jetcd retry plumbing
+    runtimeOnly "dev.failsafe:failsafe:${failsafeVersion}"
+
+    // gRPC observability
+    runtimeOnly "io.perfmark:perfmark-api:0.27.0"
+
+    // jetcd logs via SLF4J
+    runtimeOnly "org.slf4j:slf4j-api:${slf4jVersion}"
 
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.mockito:mockito-core:${commonVersions.mockito}"
