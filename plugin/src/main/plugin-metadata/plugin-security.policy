@@ -1,0 +1,11 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+grant {
+    // jetcd / gRPC / Netty open client connections to etcd endpoints
+    permission java.net.SocketPermission "*", "accept,connect,listen,resolve";
+
+    // netty-common requires setting the context class loader
+    permission java.lang.RuntimePermission "*", "setContextClassLoader";
+};
