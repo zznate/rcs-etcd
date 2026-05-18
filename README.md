@@ -76,18 +76,42 @@ $OPENSEARCH_HOME/bin/opensearch-plugin install \
 
 ## Verification
 
+Two test layers, each its own Gradle task:
+
 ```sh
-./gradlew :plugin:test    # unit tests, mocked jetcd KV, no Docker
+./gradlew :plugin:test              # unit tests, mocked jetcd KV, no Docker
+./gradlew :plugin:integrationTest   # single-node OpenSearch + etcd via docker-compose
 ```
 
-The unit suite covers the BlobContainer methods RCS exercises (write/read/list/delete,
-sorted prefix scan, oversize rejection) and the multi-tenant key invariant.
+**Unit suite** exercises every `BlobContainer` method RCS uses
+(write/read/list/delete, sorted prefix scan, oversize rejection) against a mocked
+jetcd `KV` and verifies the multi-tenant key invariant.
 
-A single-node OpenSearch + dockerCompose etcd integration suite is planned under
-`./gradlew :plugin:integrationTest`; it is not yet wired up.
+**Integration suite** brings up a single etcd 3.5.x container via
+`docker/docker-compose-test.yml` and runs:
 
-Code-quality gates (`dependencyLicenses`, `thirdPartyAudit`, Checkstyle, PMD) are
-disabled in `plugin/build.gradle`.
+- `EtcdBlobContainerIT` — exercises `EtcdBlobContainer` directly against the
+  real etcd: write/read round-trip, `listBlobsByPrefix`, native ascending-key
+  sorted list with limit, `delete` with accurate `DeleteResult` byte counts,
+  `deleteBlobsIgnoringIfNotExists` tolerance for missing keys, cross-cluster
+  isolation between two `EtcdBlobStore` instances sharing the etcd ensemble,
+  oversize-blob rejection, and txn-based `failIfAlreadyExists`.
+- `EtcdRepositoryPluginIT` — loads `EtcdRepositoryPlugin` into a single-node
+  OpenSearch JVM via `OpenSearchSingleNodeTestCase` and asserts the etcd
+  repository registers cleanly through the cluster-admin
+  `PUT _snapshot/<name>` / `GET _snapshot/<name>` round-trip (which triggers
+  `BlobStoreRepository.startVerification`'s writability probe — the same path
+  any production operator hits when registering the repository).
+
+The Gradle build shells out to the standalone `docker-compose` (v1) binary
+rather than `docker compose` (v2), so a working `docker-compose` on `PATH`
+plus a reachable Docker daemon (or a Docker-API-compatible shim such as
+podman) are the only requirements. The `integrationTest` task depends on
+`composeUp` and is finalized by `composeDown`, so the etcd container lifecycle
+is handled automatically.
+
+Code-quality gates (`dependencyLicenses`, `thirdPartyAudit`, Checkstyle, PMD,
+`forbiddenApis`) are disabled in `plugin/build.gradle`.
 
 ## Multi-node failover
 
