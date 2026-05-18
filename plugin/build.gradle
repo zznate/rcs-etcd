@@ -1,0 +1,28 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+opensearchplugin {
+    name = project.rootProject.name
+    description = 'etcd-backed Repository for OpenSearch Remote Cluster State'
+    classname = 'org.opensearch.repositories.etcd.EtcdRepositoryPlugin'
+    licenseFile = project.rootProject.file('LICENSE')
+    noticeFile = project.rootProject.file('NOTICE.txt')
+}
+
+// Quality / hygiene checks deferred until the plugin is closer to release.
+// Re-enable in a follow-on once the third-party dependency set stabilises.
+loggerUsageCheck.enabled = false
+dependencyLicenses.enabled = false
+thirdPartyAudit.enabled = false
+forbiddenApisMain.enabled = false
+forbiddenApisTest.enabled = false
+testingConventions.enabled = false
+validateNebulaPom.enabled = false
+
+dependencies {
+    implementation "io.etcd:jetcd-core:${commonVersions.jetcd}"
+
+    testImplementation "org.mockito:mockito-core:${commonVersions.mockito}"
+    testImplementation "org.assertj:assertj-core:3.26.3"
+}
