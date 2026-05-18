@@ -20,6 +20,20 @@ forbiddenApisTest.enabled = false
 testingConventions.enabled = false
 validateNebulaPom.enabled = false
 
+sourceSets {
+    integrationTest {
+        java.srcDir 'src/integrationTest/java'
+        resources.srcDir 'src/integrationTest/resources'
+        compileClasspath += sourceSets.main.output + sourceSets.test.output
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
 dependencies {
     // jetcd modules — declared explicitly because the opensearchplugin Gradle plugin
     // strips transitives from the plugin classpath. Generated protobuf response types
@@ -32,8 +46,46 @@ dependencies {
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.mockito:mockito-core:${commonVersions.mockito}"
     testImplementation "org.assertj:assertj-core:3.26.3"
+
+    // org.opensearch.test:framework brings in OpenSearchSingleNodeTestCase plus the
+    // randomized-testing harness required by the OpenSearch test base classes.
+    integrationTestImplementation "org.opensearch.test:framework:${opensearch_version}"
 }
 
 test {
     useJUnit()
+}
+
+// Compose lifecycle is wired with plain Exec tasks because the published Gradle
+// dockerCompose plugin (com.avast.gradle.docker-compose:0.17.21) needs Groovy 4
+// (Gradle 9.x), and we are pinned to Gradle 8.14 to match OpenSearch 3.0.0's
+// own build. `docker-compose ... up -d --wait` blocks until the healthcheck in
+// docker/docker-compose-test.yml reports healthy.
+def composeFile = rootProject.file('docker/docker-compose-test.yml')
+def composeProject = 'rcsetcdtest'
+
+task composeUp(type: Exec) {
+    description = "Starts the etcd test container."
+    group = "verification"
+    commandLine 'docker-compose', '-f', composeFile.absolutePath, '-p', composeProject, 'up', '-d', '--wait'
+}
+
+task composeDown(type: Exec) {
+    description = "Stops and removes the etcd test container."
+    group = "verification"
+    commandLine 'docker-compose', '-f', composeFile.absolutePath, '-p', composeProject, 'down', '-v', '--remove-orphans'
+}
+
+task integrationTest(type: Test) {
+    description = "Runs integration tests against a real etcd container started by docker-compose."
+    group = "verification"
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    useJUnit()
+    shouldRunAfter test
+    dependsOn composeUp
+    finalizedBy composeDown
+    // Silence OpenSearchTestCase's strict checks that don't apply to a single integration node.
+    systemProperty 'tests.security.manager', 'false'
+    systemProperty 'tests.seed', System.getProperty('tests.seed', 'BEEFCAFE')
 }
