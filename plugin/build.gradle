@@ -21,8 +21,19 @@ testingConventions.enabled = false
 validateNebulaPom.enabled = false
 
 dependencies {
+    // jetcd modules — declared explicitly because the opensearchplugin Gradle plugin
+    // strips transitives from the plugin classpath. Generated protobuf response types
+    // (jetcd-api) must be reachable for tests that mock jetcd-core response classes.
     implementation "io.etcd:jetcd-core:${commonVersions.jetcd}"
+    implementation "io.etcd:jetcd-api:${commonVersions.jetcd}"
+    implementation "io.etcd:jetcd-common:${commonVersions.jetcd}"
+    implementation "io.etcd:jetcd-grpc:${commonVersions.jetcd}"
 
+    testImplementation "junit:junit:4.13.2"
     testImplementation "org.mockito:mockito-core:${commonVersions.mockito}"
     testImplementation "org.assertj:assertj-core:3.26.3"
+}
+
+test {
+    useJUnit()
 }

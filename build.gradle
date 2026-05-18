@@ -22,7 +22,7 @@ buildscript {
 ext {
     commonVersions = [
         jetcd  : '0.8.6',
-        mockito: '5.14.2'
+        mockito: '5.16.1'
     ]
 }
 

@@ -6,7 +6,6 @@ package org.opensearch.repositories.etcd;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
-import io.etcd.jetcd.KV;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,13 +25,11 @@ public class EtcdBlobStore implements BlobStore {
     private static final Logger LOG = LogManager.getLogger(EtcdBlobStore.class);
 
     private final Client client;
-    private final KV kv;
     private final String tenantPrefix;
     private final long maxRequestBytes;
 
     public EtcdBlobStore(Client client, String rootPrefix, String clusterName, long maxRequestBytes) {
         this.client = client;
-        this.kv = client.getKVClient();
         this.tenantPrefix = buildTenantPrefix(rootPrefix, clusterName);
         this.maxRequestBytes = maxRequestBytes;
     }
@@ -40,11 +37,14 @@ public class EtcdBlobStore implements BlobStore {
     @Override
     public BlobContainer blobContainer(BlobPath path) {
         ByteSequence keyPrefix = ByteSequence.from(containerKeyPrefix(path), StandardCharsets.UTF_8);
-        return new EtcdBlobContainer(kv, path, keyPrefix, maxRequestBytes);
+        return new EtcdBlobContainer(client.getKVClient(), path, keyPrefix, maxRequestBytes);
     }
 
     @Override
     public void close() {
+        if (client == null) {
+            return;
+        }
         try {
             client.close();
         } catch (RuntimeException e) {
