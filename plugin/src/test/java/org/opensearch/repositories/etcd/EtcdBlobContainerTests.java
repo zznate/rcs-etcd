@@ -58,7 +58,7 @@ public class EtcdBlobContainerTests {
     public void setUp() {
         kv = mock(KV.class);
         ByteSequence keyPrefix = ByteSequence.from(CONTAINER_KEY_PREFIX, StandardCharsets.UTF_8);
-        container = new EtcdBlobContainer(kv, CONTAINER_PATH, keyPrefix, MAX_REQUEST_BYTES);
+        container = new EtcdBlobContainer(kv, CONTAINER_PATH, keyPrefix, MAX_REQUEST_BYTES, EtcdRepositoryMetrics.NOOP);
     }
 
     @Test

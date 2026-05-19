@@ -27,17 +27,19 @@ public class EtcdBlobStore implements BlobStore {
     private final Client client;
     private final String tenantPrefix;
     private final long maxRequestBytes;
+    private final EtcdRepositoryMetrics metrics;
 
-    public EtcdBlobStore(Client client, String rootPrefix, String clusterName, long maxRequestBytes) {
+    public EtcdBlobStore(Client client, String rootPrefix, String clusterName, long maxRequestBytes, EtcdRepositoryMetrics metrics) {
         this.client = client;
         this.tenantPrefix = EtcdRepository.tenantPrefix(rootPrefix, clusterName);
         this.maxRequestBytes = maxRequestBytes;
+        this.metrics = metrics;
     }
 
     @Override
     public BlobContainer blobContainer(BlobPath path) {
         ByteSequence keyPrefix = ByteSequence.from(containerKeyPrefix(path), StandardCharsets.UTF_8);
-        return new EtcdBlobContainer(client.getKVClient(), path, keyPrefix, maxRequestBytes);
+        return new EtcdBlobContainer(client.getKVClient(), path, keyPrefix, maxRequestBytes, metrics);
     }
 
     @Override

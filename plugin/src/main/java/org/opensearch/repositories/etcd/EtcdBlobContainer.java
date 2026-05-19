@@ -44,16 +44,20 @@ import java.util.concurrent.ExecutionException;
  */
 public class EtcdBlobContainer implements BlobContainer {
 
+    private static final String MANIFEST_PREFIX = "manifest__";
+
     private final KV kv;
     private final BlobPath path;
     private final ByteSequence keyPrefix;
     private final long maxRequestBytes;
+    private final EtcdRepositoryMetrics metrics;
 
-    public EtcdBlobContainer(KV kv, BlobPath path, ByteSequence keyPrefix, long maxRequestBytes) {
+    public EtcdBlobContainer(KV kv, BlobPath path, ByteSequence keyPrefix, long maxRequestBytes, EtcdRepositoryMetrics metrics) {
         this.kv = kv;
         this.path = path;
         this.keyPrefix = keyPrefix;
         this.maxRequestBytes = maxRequestBytes;
+        this.metrics = metrics;
     }
 
     @Override
@@ -70,12 +74,17 @@ public class EtcdBlobContainer implements BlobContainer {
 
     @Override
     public InputStream readBlob(String blobName) throws IOException {
-        GetResponse response = await(kv.get(keyForBlob(blobName)));
-        if (response.getKvs().isEmpty()) {
-            throw new NoSuchFileException("[" + blobName + "] blob not found");
+        long start = System.nanoTime();
+        try {
+            GetResponse response = await(kv.get(keyForBlob(blobName)));
+            if (response.getKvs().isEmpty()) {
+                throw new NoSuchFileException("[" + blobName + "] blob not found");
+            }
+            byte[] bytes = response.getKvs().get(0).getValue().getBytes();
+            return new ByteArrayInputStream(bytes);
+        } finally {
+            metrics.recordRead(System.nanoTime() - start);
         }
-        byte[] bytes = response.getKvs().get(0).getValue().getBytes();
-        return new ByteArrayInputStream(bytes);
     }
 
     @Override
@@ -91,14 +100,22 @@ public class EtcdBlobContainer implements BlobContainer {
 
     @Override
     public void writeBlob(String blobName, InputStream inputStream, long blobSize, boolean failIfAlreadyExists) throws IOException {
-        byte[] payload = readBounded(inputStream, blobSize);
-        rejectIfOversize(blobName, payload.length);
-        ByteSequence key = keyForBlob(blobName);
-        ByteSequence value = ByteSequence.from(payload);
-        if (failIfAlreadyExists) {
-            putIfAbsent(blobName, key, value);
-        } else {
-            await(kv.put(key, value));
+        long start = System.nanoTime();
+        try {
+            byte[] payload = readBounded(inputStream, blobSize);
+            rejectIfOversize(blobName, payload.length);
+            ByteSequence key = keyForBlob(blobName);
+            ByteSequence value = ByteSequence.from(payload);
+            if (failIfAlreadyExists) {
+                putIfAbsent(blobName, key, value);
+            } else {
+                await(kv.put(key, value));
+            }
+            if (blobName.startsWith(MANIFEST_PREFIX)) {
+                metrics.recordManifestPublish();
+            }
+        } finally {
+            metrics.recordWrite(System.nanoTime() - start);
         }
     }
 
@@ -124,40 +141,50 @@ public class EtcdBlobContainer implements BlobContainer {
 
     @Override
     public Map<String, BlobMetadata> listBlobsByPrefix(String blobNamePrefix) throws IOException {
-        ByteSequence scanFrom = scanPrefix(blobNamePrefix);
-        GetOption opt = GetOption.builder().isPrefix(true).build();
-        GetResponse response = await(kv.get(scanFrom, opt));
-        Map<String, BlobMetadata> result = new HashMap<>();
-        for (KeyValue entry : response.getKvs()) {
-            String name = stripKeyPrefix(entry.getKey());
-            if (name.contains(EtcdRepository.B_P_SEPARATOR)) {
-                continue; // not a direct child of this container
+        long start = System.nanoTime();
+        try {
+            ByteSequence scanFrom = scanPrefix(blobNamePrefix);
+            GetOption opt = GetOption.builder().isPrefix(true).build();
+            GetResponse response = await(kv.get(scanFrom, opt));
+            Map<String, BlobMetadata> result = new HashMap<>();
+            for (KeyValue entry : response.getKvs()) {
+                String name = stripKeyPrefix(entry.getKey());
+                if (name.contains(EtcdRepository.B_P_SEPARATOR)) {
+                    continue; // not a direct child of this container
+                }
+                result.put(name, new PlainBlobMetadata(name, entry.getValue().size()));
             }
-            result.put(name, new PlainBlobMetadata(name, entry.getValue().size()));
+            return result;
+        } finally {
+            metrics.recordList(System.nanoTime() - start);
         }
-        return result;
     }
 
     @Override
     public List<BlobMetadata> listBlobsByPrefixInSortedOrder(String blobNamePrefix, int limit, BlobNameSortOrder order)
         throws IOException {
-        ByteSequence scanFrom = scanPrefix(blobNamePrefix);
-        GetOption opt = GetOption.builder()
-            .isPrefix(true)
-            .withSortField(GetOption.SortTarget.KEY)
-            .withSortOrder(GetOption.SortOrder.ASCEND)
-            .withLimit(limit)
-            .build();
-        GetResponse response = await(kv.get(scanFrom, opt));
-        List<BlobMetadata> result = new ArrayList<>(response.getKvs().size());
-        for (KeyValue entry : response.getKvs()) {
-            String name = stripKeyPrefix(entry.getKey());
-            if (name.contains(EtcdRepository.B_P_SEPARATOR)) {
-                continue;
+        long start = System.nanoTime();
+        try {
+            ByteSequence scanFrom = scanPrefix(blobNamePrefix);
+            GetOption opt = GetOption.builder()
+                .isPrefix(true)
+                .withSortField(GetOption.SortTarget.KEY)
+                .withSortOrder(GetOption.SortOrder.ASCEND)
+                .withLimit(limit)
+                .build();
+            GetResponse response = await(kv.get(scanFrom, opt));
+            List<BlobMetadata> result = new ArrayList<>(response.getKvs().size());
+            for (KeyValue entry : response.getKvs()) {
+                String name = stripKeyPrefix(entry.getKey());
+                if (name.contains(EtcdRepository.B_P_SEPARATOR)) {
+                    continue;
+                }
+                result.add(new PlainBlobMetadata(name, entry.getValue().size()));
             }
-            result.add(new PlainBlobMetadata(name, entry.getValue().size()));
+            return result;
+        } finally {
+            metrics.recordList(System.nanoTime() - start);
         }
-        return result;
     }
 
     @Override
@@ -217,6 +244,7 @@ public class EtcdBlobContainer implements BlobContainer {
 
     private void rejectIfOversize(String blobName, int size) throws IOException {
         if (size > maxRequestBytes) {
+            metrics.recordOversizeRejection();
             throw new IOException(
                 "blob [" + blobName + "] of size " + size
                     + " bytes exceeds etcd max_request_bytes (" + maxRequestBytes + " bytes); "
@@ -230,6 +258,7 @@ public class EtcdBlobContainer implements BlobContainer {
         Cmp cmp = new Cmp(key, Cmp.Op.EQUAL, CmpTarget.createRevision(0L));
         TxnResponse response = await(kv.txn().If(cmp).Then(Op.put(key, value, PutOption.DEFAULT)).commit());
         if (!response.isSucceeded()) {
+            metrics.recordPutIfAbsentRejection();
             throw new FileAlreadyExistsException("blob [" + blobName + "] already exists");
         }
     }

@@ -18,6 +18,7 @@ import org.opensearch.indices.recovery.RecoverySettings;
 import org.opensearch.repositories.blobstore.BlobStoreRepository;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Etcd-backed {@link BlobStoreRepository}. Keys are namespaced under
@@ -61,12 +62,14 @@ public class EtcdRepository extends BlobStoreRepository {
     private final String rootPrefix;
     private final String clusterName;
     private final long maxRequestBytes;
+    private final Supplier<EtcdRepositoryMetrics> metricsSupplier;
 
     public EtcdRepository(
         RepositoryMetadata metadata,
         NamedXContentRegistry namedXContentRegistry,
         ClusterService clusterService,
-        RecoverySettings recoverySettings
+        RecoverySettings recoverySettings,
+        Supplier<EtcdRepositoryMetrics> metricsSupplier
     ) {
         super(metadata, namedXContentRegistry, clusterService, recoverySettings);
         Settings nodeSettings = clusterService.getSettings();
@@ -74,12 +77,13 @@ public class EtcdRepository extends BlobStoreRepository {
         this.rootPrefix = normalizePrefix(ROOT_PREFIX_SETTING.get(nodeSettings));
         this.clusterName = clusterService.getClusterName().value();
         this.maxRequestBytes = MAX_REQUEST_BYTES_SETTING.get(nodeSettings).getBytes();
+        this.metricsSupplier = metricsSupplier;
     }
 
     @Override
     protected EtcdBlobStore createBlobStore() {
         Client client = Client.builder().endpoints(endpoints.toArray(new String[0])).build();
-        return new EtcdBlobStore(client, rootPrefix, clusterName, maxRequestBytes);
+        return new EtcdBlobStore(client, rootPrefix, clusterName, maxRequestBytes, metricsSupplier.get());
     }
 
     @Override

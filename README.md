@@ -54,6 +54,30 @@ PUT _snapshot/etcd-rcs
 }
 ```
 
+## Metrics
+
+The plugin instruments every `BlobContainer` entry point through OpenSearch's
+telemetry SPI (`libs/telemetry`). Operators install the
+[`telemetry-otel`](https://docs.opensearch.org/latest/observing-your-data/trace/) plugin
+and configure an OTLP endpoint to ship these instruments to a collector / backend
+(Prometheus via OTel collector, Tempo, Jaeger, etc.); without that plugin installed,
+the instruments flow into OpenSearch's no-op telemetry implementation and are silently
+discarded. All names live under the `rcs_etcd.*` namespace.
+
+| Name                                            | Type      | Unit | Fires on                                                          |
+| ----------------------------------------------- | --------- | ---- | ----------------------------------------------------------------- |
+| `rcs_etcd.blob.write.{total,duration}`          | counter / histogram | 1 / ms | Every `writeBlob` invocation (success or failure).      |
+| `rcs_etcd.blob.read.{total,duration}`           | counter / histogram | 1 / ms | Every `readBlob` invocation.                            |
+| `rcs_etcd.blob.list.{total,duration}`           | counter / histogram | 1 / ms | Every `listBlobsByPrefix` and `listBlobsByPrefixInSortedOrder`. |
+| `rcs_etcd.blob.oversize_rejection.total`        | counter   | 1    | Writes rejected because payload exceeded `max_request_bytes`.     |
+| `rcs_etcd.blob.put_if_absent_rejection.total`   | counter   | 1    | `writeBlob(failIfAlreadyExists=true)` etcd-txn rejections.        |
+| `rcs_etcd.manifest.publish.total`               | counter   | 1    | Successful writes whose blob name starts with `manifest__`.       |
+
+Latency histograms include both success and failure paths (timing is captured in a
+`finally` block), so rates derived from `*.total` and percentiles from `*.duration`
+share the same denominator. The `.total` suffix follows Prometheus convention so the
+names round-trip cleanly through `otel-collector`.
+
 ## Building
 
 Prerequisites:

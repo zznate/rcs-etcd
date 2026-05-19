@@ -39,6 +39,6 @@ public class EtcdBlobStoreTests {
     private static EtcdBlobStore stubStore(String rootPrefix, String clusterName) {
         // The Client is only touched on blobContainer(...) / close(), neither of which
         // these key-derivation tests invoke. close() tolerates a null client.
-        return new EtcdBlobStore(null, rootPrefix, clusterName, 1_572_864L);
+        return new EtcdBlobStore(null, rootPrefix, clusterName, 1_572_864L, EtcdRepositoryMetrics.NOOP);
     }
 }

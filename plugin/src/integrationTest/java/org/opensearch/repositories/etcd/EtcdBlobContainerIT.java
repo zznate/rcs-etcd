@@ -58,7 +58,7 @@ public class EtcdBlobContainerIT {
     @Before
     public void setUp() {
         clusterName = "cluster-" + UUID.randomUUID();
-        store = new EtcdBlobStore(client, ROOT_PREFIX, clusterName, MAX_REQUEST_BYTES);
+        store = new EtcdBlobStore(client, ROOT_PREFIX, clusterName, MAX_REQUEST_BYTES, EtcdRepositoryMetrics.NOOP);
     }
 
     @After
@@ -139,7 +139,7 @@ public class EtcdBlobContainerIT {
     @Test
     public void crossClusterIsolation() throws IOException {
         String otherCluster = "cluster-" + UUID.randomUUID();
-        EtcdBlobStore otherStore = new EtcdBlobStore(client, ROOT_PREFIX, otherCluster, MAX_REQUEST_BYTES);
+        EtcdBlobStore otherStore = new EtcdBlobStore(client, ROOT_PREFIX, otherCluster, MAX_REQUEST_BYTES, EtcdRepositoryMetrics.NOOP);
         try {
             BlobContainer mine = store.blobContainer(BlobPath.cleanPath().add("shared-name"));
             BlobContainer theirs = otherStore.blobContainer(BlobPath.cleanPath().add("shared-name"));
