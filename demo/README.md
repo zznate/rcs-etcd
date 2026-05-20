@@ -47,6 +47,42 @@ make down     # tear down containers and volumes
 The script prints the new manifest key(s) on success so you can poke at them
 with `docker-compose -p rcs-etcd-demo exec etcd etcdctl get <key>` afterwards.
 
+## Inspecting a value
+
+### Byte size of a value
+
+```sh
+# exact: decode the base64 value and count bytes
+docker-compose -p rcs-etcd-demo exec -T etcd etcdctl get <key> -w json \
+  | jq -r '.kvs[0].value' | base64 -d | wc -c
+
+# whole-DB size on disk (see the DB SIZE column)
+docker-compose -p rcs-etcd-demo exec -T etcd etcdctl endpoint status -w table
+```
+
+`jq` and `base64` run on the host side of the pipe, so they don't need to exist
+in the (minimal) etcd image — only `etcdctl` runs in the container.
+
+### Best-effort decode of a value
+
+RCS blobs are a Lucene codec header wrapping a [SMILE](https://github.com/FasterXML/smile-format-specification)
+document (LZ4-compressed above a size threshold). A full decode needs OpenSearch's
+`ChecksumBlobStoreFormat`, but `xxd` / `strings` surface the structure for free:
+
+```sh
+# hex dump: Lucene magic 3fd76c17, then the codec name, then SMILE header (3a 29 0a = ":)\n")
+docker-compose -p rcs-etcd-demo exec -T etcd etcdctl get <key> --print-value-only | xxd | head
+
+# readable fragments: codec name, index name, SMILE field names
+docker-compose -p rcs-etcd-demo exec -T etcd etcdctl get <key> --print-value-only | strings | head
+```
+
+For a small index-metadata blob the `strings` output reads almost like a schema —
+`index-metadata`, the index name, then `version`, `mapping_version`,
+`settings_version`, `state`, `settings`, `index.auto_expand_replicas`, and so on.
+Larger blobs are LZ4-compressed, so only the codec header and the leading SMILE
+bytes stay readable.
+
 ## Configuration the stack pins, and where it lives
 
 | Concern | Where |

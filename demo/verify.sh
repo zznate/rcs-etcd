@@ -75,6 +75,6 @@ echo
 echo "PASS: a new cluster-state manifest landed in etcd."
 echo
 echo "New manifest key(s) (latest first by RCS's inverted-timestamp encoding):"
-echo "${manifest_keys}" | sort | head -3 | sed 's/^/    /'
+echo "${manifest_keys}" | sort | sed 's/^/    /'
 echo
 echo "Total new etcd keys under ${ROOT_PREFIX}/ : $(echo "${new_keys}" | wc -l | tr -d ' ')"
