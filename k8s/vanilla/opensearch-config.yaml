@@ -1,0 +1,39 @@
+# Vanilla configuration: no Remote Cluster State, no rcs-etcd plugin
+# settings. Telemetry-otel module is enabled in both configurations so
+# the comparison runs against an identical observability surface.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensearch-config
+  namespace: rcs-etcd-poc
+  labels:
+    app: opensearch
+    config: vanilla
+data:
+  opensearch.yml: |
+    cluster.name: opensearch-vanilla
+    network.host: 0.0.0.0
+    node.name: ${HOSTNAME}
+
+    discovery.seed_hosts:
+      - opensearch-0.opensearch-headless.rcs-etcd-poc.svc.cluster.local
+      - opensearch-1.opensearch-headless.rcs-etcd-poc.svc.cluster.local
+      - opensearch-2.opensearch-headless.rcs-etcd-poc.svc.cluster.local
+    cluster.initial_cluster_manager_nodes:
+      - opensearch-0
+      - opensearch-1
+      - opensearch-2
+
+    bootstrap.memory_lock: false
+
+    # Telemetry: enable the bundled telemetry-otel module's tracer and
+    # metrics paths and select OTLP exporters. The OTLP endpoint itself
+    # is configured on the container via OTEL_EXPORTER_OTLP_ENDPOINT,
+    # which the OTel SDK reads directly (it is not an OpenSearch
+    # setting).
+    telemetry.feature.tracer.enabled: true
+    telemetry.feature.metrics.enabled: true
+    telemetry.tracer.enabled: true
+    telemetry.otel.tracer.span.exporter.class: io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
+    telemetry.otel.metrics.exporter.class: io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter
