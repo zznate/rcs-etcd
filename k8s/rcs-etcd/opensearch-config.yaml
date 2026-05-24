@@ -1,0 +1,51 @@
+# rcs-etcd configuration: Remote Cluster State enabled, the rcs-etcd
+# plugin's `etcd` repository registered via node attributes. Telemetry
+# settings mirror the vanilla ConfigMap so the comparison surfaces are
+# identical apart from the RCS path.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensearch-config
+  namespace: rcs-etcd-poc
+  labels:
+    app: opensearch
+    config: rcs-etcd
+data:
+  opensearch.yml: |
+    cluster.name: opensearch-rcs-etcd
+    network.host: 0.0.0.0
+    node.name: ${HOSTNAME}
+
+    discovery.seed_hosts:
+      - opensearch-0.opensearch-headless.rcs-etcd-poc.svc.cluster.local
+      - opensearch-1.opensearch-headless.rcs-etcd-poc.svc.cluster.local
+      - opensearch-2.opensearch-headless.rcs-etcd-poc.svc.cluster.local
+    cluster.initial_cluster_manager_nodes:
+      - opensearch-0
+      - opensearch-1
+      - opensearch-2
+
+    bootstrap.memory_lock: false
+
+    # Remote Cluster State backed by etcd via the rcs-etcd plugin.
+    # The `node.attr.remote_store.repository.etcd-rcs.settings.location`
+    # value is required by RemoteStoreNodeAttribute but ignored by the
+    # plugin; the actual configuration is `cluster.rcs_etcd.*`.
+    cluster.remote_store.state.enabled: true
+    cluster.rcs_etcd.endpoints:
+      - http://etcd.rcs-etcd-poc.svc.cluster.local:2379
+    cluster.rcs_etcd.root_prefix: /opensearch-rcs
+    node.attr.remote_store.state.repository: etcd-rcs
+    node.attr.remote_store.routing_table.repository: etcd-rcs
+    node.attr.remote_store.repository.etcd-rcs.type: etcd
+    node.attr.remote_store.repository.etcd-rcs.settings.location: /
+
+    # Telemetry: identical to the vanilla configuration. The OTLP
+    # endpoint is supplied via OTEL_EXPORTER_OTLP_ENDPOINT on the
+    # container, not as an OpenSearch setting.
+    telemetry.feature.tracer.enabled: true
+    telemetry.feature.metrics.enabled: true
+    telemetry.tracer.enabled: true
+    telemetry.otel.tracer.span.exporter.class: io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
+    telemetry.otel.metrics.exporter.class: io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter

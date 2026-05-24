@@ -1,0 +1,21 @@
+# REST endpoint for the OpenSearch StatefulSet. NodePort 30200 maps to
+# host port 9200 via the kind cluster's extraPortMappings, so smoke
+# scripts can hit `http://localhost:9200/...` without port-forward.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+  namespace: rcs-etcd-poc
+  labels:
+    app: opensearch
+spec:
+  type: NodePort
+  ports:
+    - name: rest
+      port: 9200
+      targetPort: 9200
+      nodePort: 30200
+      protocol: TCP
+  selector:
+    app: opensearch
