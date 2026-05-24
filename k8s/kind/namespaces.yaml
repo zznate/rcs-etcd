@@ -1,0 +1,18 @@
+# Namespaces for the rcs-etcd k8s testbed.
+# stepflow-o11y is shared with the existing stepflow observability stack
+# manifests and hosts the OTel collector, Prometheus, Grafana, Jaeger,
+# Loki, and Promtail.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rcs-etcd-poc
+  labels:
+    name: rcs-etcd-poc
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stepflow-o11y
+  labels:
+    name: stepflow-o11y

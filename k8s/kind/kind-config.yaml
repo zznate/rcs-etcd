@@ -1,0 +1,29 @@
+# Kind cluster for the rcs-etcd vs vanilla OpenSearch comparison testbed.
+# Single control-plane node. NodePort host mappings:
+#   30200 -> 9200   OpenSearch REST
+#   30001 -> 3000   Grafana UI
+#   30090 -> 9090   Prometheus UI
+#   30686 -> 16686  Jaeger UI
+#   32379 -> 2379   etcd client API (debug only — POC convenience)
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: opensearch-testing
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30200
+        hostPort: 9200
+        protocol: TCP
+      - containerPort: 30001
+        hostPort: 3000
+        protocol: TCP
+      - containerPort: 30090
+        hostPort: 9090
+        protocol: TCP
+      - containerPort: 30686
+        hostPort: 16686
+        protocol: TCP
+      - containerPort: 32379
+        hostPort: 2379
+        protocol: TCP
