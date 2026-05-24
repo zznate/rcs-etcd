@@ -17,6 +17,11 @@ RUN opensearch-plugin remove opensearch-neural-search \
  && opensearch-plugin remove opensearch-ml \
  && opensearch-plugin remove opensearch-security-analytics
 
+# telemetry-otel is shipped as an installable plugin (not a bundled
+# module) and provides the OTLP exporters that surface the rcs_etcd.*
+# instruments through the observability stack.
+RUN echo y | opensearch-plugin install telemetry-otel
+
 COPY --chown=1000:0 plugin/build/distributions/rcs-etcd-3.0.0.0.zip /tmp/rcs-etcd-plugin.zip
 RUN echo y | opensearch-plugin install file:///tmp/rcs-etcd-plugin.zip \
  && rm /tmp/rcs-etcd-plugin.zip
