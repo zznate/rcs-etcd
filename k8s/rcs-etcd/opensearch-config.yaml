@@ -49,3 +49,6 @@ data:
     telemetry.tracer.enabled: true
     telemetry.otel.tracer.span.exporter.class: io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter
     telemetry.otel.metrics.exporter.class: io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter
+    # Push interval tightened from the 60s default so the comparison
+    # smoke and dashboard refresh feel live.
+    telemetry.otel.metrics.publish.interval: 10s

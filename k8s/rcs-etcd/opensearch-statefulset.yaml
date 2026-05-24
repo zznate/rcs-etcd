@@ -37,10 +37,6 @@ spec:
               value: "true"
             - name: DISABLE_SECURITY_PLUGIN
               value: "true"
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector.stepflow-o11y.svc.cluster.local:4317"
-            - name: OTEL_EXPORTER_OTLP_PROTOCOL
-              value: "grpc"
           ports:
             - name: rest
               containerPort: 9200
@@ -72,6 +68,25 @@ spec:
               subPath: opensearch.yml
             - name: data
               mountPath: /usr/share/opensearch/data
+        - name: otel-sidecar
+          image: otel/opentelemetry-collector-contrib:0.95.0
+          imagePullPolicy: IfNotPresent
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 50m
+            limits:
+              memory: 128Mi
+              cpu: 200m
+          volumeMounts:
+            - name: otel-sidecar-config
+              mountPath: /etc/otelcol
       volumes:
         - name: config
           configMap:
@@ -79,6 +94,12 @@ spec:
             items:
               - key: opensearch.yml
                 path: opensearch.yml
+        - name: otel-sidecar-config
+          configMap:
+            name: otel-sidecar-config
+            items:
+              - key: config.yaml
+                path: config.yaml
   volumeClaimTemplates:
     - metadata:
         name: data

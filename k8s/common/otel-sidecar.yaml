@@ -1,0 +1,47 @@
+# Per-pod OTel collector sidecar config. OpenSearch 3.0.0's
+# telemetry-otel module wires the OTLP exporter via
+# `OtlpGrpcMetricExporter.getDefault()`, which hardcodes the endpoint
+# to localhost:4317 and ignores OTEL_EXPORTER_OTLP_ENDPOINT. The
+# sidecar listens on that port and forwards to the stepflow-o11y
+# collector for aggregation.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-sidecar-config
+  namespace: rcs-etcd-poc
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: localhost:4317
+          http:
+            endpoint: localhost:4318
+
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 96
+        spike_limit_mib: 24
+      batch:
+        timeout: 5s
+        send_batch_size: 512
+
+    exporters:
+      otlp:
+        endpoint: otel-collector.stepflow-o11y.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]
