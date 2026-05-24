@@ -1,0 +1,191 @@
+apiVersion: v1
+data:
+  opensearch-cluster.json: |
+    {
+      "title": "OpenSearch Cluster",
+      "uid": "opensearch-cluster",
+      "tags": ["opensearch", "rcs-etcd"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "10s",
+      "time": { "from": "now-30m", "to": "now" },
+      "templating": { "list": [] },
+      "annotations": { "list": [] },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Async fetch rate (success vs failure)",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "expr": "rate(stepflow_async_fetch_success_count_total[1m])", "legendFormat": "success/s", "refId": "A" },
+            { "expr": "rate(stepflow_async_fetch_failure_count_total[1m])", "legendFormat": "failure/s", "refId": "B" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+            }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Cumulative async fetches (success)",
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [{ "expr": "stepflow_async_fetch_success_count_total", "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "colorMode": "value", "graphMode": "area" }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Cumulative async fetches (failure)",
+          "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [{ "expr": "stepflow_async_fetch_failure_count_total", "refId": "A" }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "red", "value": 1 }
+              ]}
+            }
+          },
+          "options": { "colorMode": "value", "graphMode": "area" }
+        },
+        {
+          "id": 4,
+          "type": "text",
+          "title": "Deferred coverage",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+          "options": {
+            "mode": "markdown",
+            "content": "**Pending OpenSearch SPI coverage**\n\nThe upstream `_cluster/health`, node-level heap and CPU, indexing-rate, and cluster-state-version metrics are not yet emitted via the OpenSearch telemetry SPI in 3.0.0. They will populate here as core OpenSearch instruments those paths.\n\n**Pending histogram support**\n\nThe rcs-etcd plugin emits `rcs_etcd.blob.{write,read,list}.duration` as exponential histograms. The bundled stepflow-o11y OpenTelemetry Collector contrib (v0.95.0) Prometheus exporter does not currently surface exponential histograms to the scrape endpoint. Counters are unaffected and visible on the rcs-etcd Plugin dashboard."
+          }
+        }
+      ]
+    }
+  rcs-etcd-plugin.json: |
+    {
+      "title": "rcs-etcd Plugin",
+      "uid": "rcs-etcd-plugin",
+      "tags": ["rcs-etcd", "opensearch"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "10s",
+      "time": { "from": "now-30m", "to": "now" },
+      "templating": { "list": [] },
+      "annotations": { "list": [] },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Manifest publish rate (per second)",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "expr": "rate(stepflow_rcs_etcd_manifest_publish_total[1m])",
+              "legendFormat": "publishes/s",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+            }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Blob operations rate (per second)",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "expr": "rate(stepflow_rcs_etcd_blob_write_total[1m])", "legendFormat": "writes/s", "refId": "A" },
+            { "expr": "rate(stepflow_rcs_etcd_blob_read_total[1m])",  "legendFormat": "reads/s",  "refId": "B" },
+            { "expr": "rate(stepflow_rcs_etcd_blob_list_total[1m])",  "legendFormat": "lists/s",  "refId": "C" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+            }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Cumulative manifests",
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [{ "expr": "stepflow_rcs_etcd_manifest_publish_total", "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" } } },
+          "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto" }
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Cumulative writes",
+          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [{ "expr": "stepflow_rcs_etcd_blob_write_total", "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "colorMode": "value", "graphMode": "area" }
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Cumulative reads",
+          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [{ "expr": "stepflow_rcs_etcd_blob_read_total", "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "colorMode": "value", "graphMode": "area" }
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Cumulative lists",
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [{ "expr": "stepflow_rcs_etcd_blob_list_total", "refId": "A" }],
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "options": { "colorMode": "value", "graphMode": "area" }
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "OTLP exporter throughput (per-pod sidecar)",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "expr": "rate(stepflow_otlp_exporter_seen_total[1m])",     "legendFormat": "seen/s",     "refId": "A" },
+            { "expr": "rate(stepflow_otlp_exporter_exported_total[1m])", "legendFormat": "exported/s", "refId": "B" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+            }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+        }
+      ]
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: grafana-dashboard-rcs-etcd
+  namespace: stepflow-o11y
