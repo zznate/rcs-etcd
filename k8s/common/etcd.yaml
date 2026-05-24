@@ -1,0 +1,82 @@
+# Single-node etcd ensemble backing the rcs-etcd plugin. State is
+# wiped on namespace teardown (PVC tied to the StatefulSet's
+# volumeClaimTemplates lifecycle). NodePort 32379 maps to host 2379
+# so etcdctl from the host can inspect the keyspace directly.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd
+  namespace: rcs-etcd-poc
+  labels:
+    app: etcd
+spec:
+  type: NodePort
+  ports:
+    - name: client
+      port: 2379
+      targetPort: 2379
+      nodePort: 32379
+      protocol: TCP
+  selector:
+    app: etcd
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd
+  namespace: rcs-etcd-poc
+  labels:
+    app: etcd
+spec:
+  serviceName: etcd
+  replicas: 1
+  selector:
+    matchLabels:
+      app: etcd
+  template:
+    metadata:
+      labels:
+        app: etcd
+    spec:
+      containers:
+        - name: etcd
+          image: quay.io/coreos/etcd:v3.5.21
+          imagePullPolicy: IfNotPresent
+          command:
+            - etcd
+            - --name=etcd-0
+            - --data-dir=/var/lib/etcd
+            - --listen-client-urls=http://0.0.0.0:2379
+            - --advertise-client-urls=http://etcd.rcs-etcd-poc.svc.cluster.local:2379
+          ports:
+            - name: client
+              containerPort: 2379
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 200m
+          readinessProbe:
+            exec:
+              command: ["etcdctl", "endpoint", "health"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["etcdctl", "endpoint", "health"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/etcd
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

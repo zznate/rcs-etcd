@@ -1,0 +1,24 @@
+# Headless Service backing the OpenSearch StatefulSet's pod DNS.
+# Required for `discovery.seed_hosts` to resolve per-pod FQDNs
+# (`opensearch-0.opensearch-headless.rcs-etcd-poc.svc.cluster.local`,
+# etc.) during cluster formation. publishNotReadyAddresses lets pods
+# find each other before any is Ready, which is how seed_hosts works
+# at first boot. Client REST traffic uses a separate NodePort Service
+# per cluster configuration.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch-headless
+  namespace: rcs-etcd-poc
+  labels:
+    app: opensearch
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: transport
+      port: 9300
+      targetPort: 9300
+  selector:
+    app: opensearch
