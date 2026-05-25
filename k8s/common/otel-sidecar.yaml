@@ -2,7 +2,7 @@
 # telemetry-otel module wires the OTLP exporter via
 # `OtlpGrpcMetricExporter.getDefault()`, which hardcodes the endpoint
 # to localhost:4317 and ignores OTEL_EXPORTER_OTLP_ENDPOINT. The
-# sidecar listens on that port and forwards to the stepflow-o11y
+# sidecar listens on that port and forwards to the in-tree otel-stack
 # collector for aggregation.
 
 apiVersion: v1
@@ -31,7 +31,7 @@ data:
 
     exporters:
       otlp:
-        endpoint: otel-collector.stepflow-o11y.svc.cluster.local:4317
+        endpoint: otel-collector.otel-stack.svc.cluster.local:4317
         tls:
           insecure: true
 

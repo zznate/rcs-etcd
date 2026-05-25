@@ -1,7 +1,7 @@
 # Namespaces for the rcs-etcd k8s testbed.
-# stepflow-o11y is shared with the existing stepflow observability stack
-# manifests and hosts the OTel collector, Prometheus, Grafana, Jaeger,
-# Loki, and Promtail.
+# `otel-stack` hosts the self-contained observability stack vendored
+# under k8s/otel-stack/. It is optional infrastructure; deploying it
+# is a separate `make otel-stack` step.
 
 apiVersion: v1
 kind: Namespace
@@ -13,6 +13,6 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: stepflow-o11y
+  name: otel-stack
   labels:
-    name: stepflow-o11y
+    name: otel-stack

@@ -15,9 +15,6 @@ them tears down one and brings up the other in the same namespace.
   `KIND_EXPERIMENTAL_PROVIDER=podman` from the Makefile.
 - `kubectl` configured to talk to the local kubelet.
 - JDK 21 (for the Gradle plugin build).
-- A local checkout of `stepflow` at `~/Documents/GitHub/stepflow`
-  (override via `STEPFLOW_REPO`). The o11y manifests live under
-  `examples/production/k8s/stepflow-o11y/` and are applied wholesale.
 - `opensearch-benchmark` (`pip install opensearch-benchmark`) and a
   checkout of `opensearch-benchmark-workloads` for the `geonames`
   workload. The smoke script defaults to
@@ -30,11 +27,12 @@ them tears down one and brings up the other in the same namespace.
 ```
 k8s/
   kind/              Kind cluster config + namespace declarations
+  otel-stack/        Self-contained observability stack (see otel-stack/README.md)
   common/            etcd StatefulSet, headless Service, OTel sidecar ConfigMap
   vanilla/           opensearch.yml + StatefulSet + client Service (no RCS)
   rcs-etcd/          opensearch.yml + StatefulSet + client Service (RCS enabled)
   dashboards/        Grafana dashboard JSONs + their wrapping ConfigMap
-  o11y-patches/      Patches that mount the dashboards into stepflow-o11y Grafana
+  o11y-patches/      Patches that mount the dashboards into otel-stack Grafana
   Dockerfile         Testbed image (OpenSearch 3.0.0 + rcs-etcd + telemetry-otel)
   Makefile           Entry points
   bring-up.sh        Used by up-vanilla / up-rcs-etcd
@@ -46,14 +44,14 @@ k8s/
 ```sh
 cd k8s
 make cluster        # creates `opensearch-testing` Kind cluster + namespaces
-make o11y           # deploys the stepflow-o11y stack into it
+make otel-stack     # deploys the bundled observability stack
 make image          # builds the plugin zip, the image, and kind-loads it
 make dashboards     # one-time: mounts the rcs-etcd dashboards into Grafana
 make up-rcs-etcd    # brings up the rcs-etcd configuration; records timings
 make smoke          # replays timings + runs the benchmark + dumps etcd keys
 make switch-to-vanilla
 make smoke          # same metrics under vanilla for comparison
-make down           # tears down rcs-etcd-poc, leaves stepflow-o11y running
+make down           # tears down rcs-etcd-poc, leaves otel-stack running
 ```
 
 `make cluster` refuses to run if a Kind cluster named
@@ -97,7 +95,7 @@ exporter via `OtlpGrpcMetricExporter.getDefault()`, which hardcodes
 the endpoint to `localhost:4317` and ignores
 `OTEL_EXPORTER_OTLP_ENDPOINT`. A lightweight `otelcol-contrib`
 sidecar in each OpenSearch pod listens on that port and forwards
-traces and metrics to the stepflow-o11y collector. The sidecar
+traces and metrics to the otel-stack collector. The sidecar
 config is `common/otel-sidecar.yaml`.
 
 ## Smoke metrics
