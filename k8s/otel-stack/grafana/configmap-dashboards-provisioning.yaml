@@ -20,3 +20,13 @@ data:
         allowUiUpdates: true
         options:
           path: /etc/grafana/provisioning/dashboards/infrastructure
+
+      - name: 'rcs-etcd'
+        orgId: 1
+        folder: 'rcs-etcd'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /etc/grafana/provisioning/dashboards/rcs-etcd

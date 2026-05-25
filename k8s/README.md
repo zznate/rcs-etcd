@@ -31,8 +31,6 @@ k8s/
   common/            etcd StatefulSet, headless Service, OTel sidecar ConfigMap
   vanilla/           opensearch.yml + StatefulSet + client Service (no RCS)
   rcs-etcd/          opensearch.yml + StatefulSet + client Service (RCS enabled)
-  dashboards/        Grafana dashboard JSONs + their wrapping ConfigMap
-  o11y-patches/      Patches that mount the dashboards into otel-stack Grafana
   Dockerfile         Testbed image (OpenSearch 3.0.0 + rcs-etcd + telemetry-otel)
   Makefile           Entry points
   bring-up.sh        Used by up-vanilla / up-rcs-etcd
@@ -44,9 +42,8 @@ k8s/
 ```sh
 cd k8s
 make cluster        # creates `opensearch-testing` Kind cluster + namespaces
-make otel-stack     # deploys the bundled observability stack
+make otel-stack     # deploys the bundled observability stack (includes rcs-etcd dashboards)
 make image          # builds the plugin zip, the image, and kind-loads it
-make dashboards     # one-time: mounts the rcs-etcd dashboards into Grafana
 make up-rcs-etcd    # brings up the rcs-etcd configuration; records timings
 make smoke          # replays timings + runs the benchmark + dumps etcd keys
 make switch-to-vanilla

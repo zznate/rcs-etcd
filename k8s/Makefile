@@ -15,7 +15,7 @@ NAMESPACE := rcs-etcd-poc
 # every kind invocation that touches the cluster's containers.
 export KIND_EXPERIMENTAL_PROVIDER := podman
 
-.PHONY: help cluster otel-stack image up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd dashboards smoke down clean
+.PHONY: help cluster otel-stack image up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd smoke down clean
 
 help:
 	@echo "Targets:"
@@ -26,9 +26,8 @@ help:
 	@echo "  up-rcs-etcd          Apply common + rcs-etcd; wait for green and first manifest publish"
 	@echo "  switch-to-vanilla    down + up-vanilla"
 	@echo "  switch-to-rcs-etcd   down + up-rcs-etcd"
-	@echo "  dashboards           Install rcs-etcd dashboards into stepflow-o11y Grafana"
 	@echo "  smoke                Run the benchmark + emit METRIC lines for the active config"
-	@echo "  down                 Delete the rcs-etcd-poc namespace (stepflow-o11y is untouched)"
+	@echo "  down                 Delete the rcs-etcd-poc namespace (otel-stack is untouched)"
 	@echo "  clean                down + remove the Kind-loaded image"
 
 cluster:
@@ -68,9 +67,6 @@ up-rcs-etcd:
 switch-to-vanilla: down up-vanilla
 
 switch-to-rcs-etcd: down up-rcs-etcd
-
-dashboards:
-	bash $(CURDIR)/o11y-patches/apply.sh
 
 smoke:
 	bash $(CURDIR)/smoke.sh

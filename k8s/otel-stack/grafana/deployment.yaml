@@ -97,6 +97,9 @@ spec:
           - name: dashboard-infrastructure
             mountPath: /etc/grafana/provisioning/dashboards/infrastructure
             readOnly: true
+          - name: dashboard-rcs-etcd
+            mountPath: /etc/grafana/provisioning/dashboards/rcs-etcd
+            readOnly: true
           - name: data
             mountPath: /var/lib/grafana
         resources:
@@ -128,6 +131,9 @@ spec:
         - name: dashboard-infrastructure
           configMap:
             name: grafana-dashboard-infrastructure
+        - name: dashboard-rcs-etcd
+          configMap:
+            name: grafana-dashboard-rcs-etcd
         - name: data
           persistentVolumeClaim:
             claimName: grafana-data

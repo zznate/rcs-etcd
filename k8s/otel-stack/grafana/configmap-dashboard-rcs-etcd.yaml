@@ -1,3 +1,6 @@
+# Copyright 2026 zznate
+# SPDX-License-Identifier: Apache-2.0
+
 apiVersion: v1
 data:
   opensearch-cluster.json: |
@@ -20,8 +23,8 @@ data:
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [
-            { "expr": "rate(stepflow_async_fetch_success_count_total[1m])", "legendFormat": "success/s", "refId": "A" },
-            { "expr": "rate(stepflow_async_fetch_failure_count_total[1m])", "legendFormat": "failure/s", "refId": "B" }
+            { "expr": "rate(async_fetch_success_count_total[1m])", "legendFormat": "success/s", "refId": "A" },
+            { "expr": "rate(async_fetch_failure_count_total[1m])", "legendFormat": "failure/s", "refId": "B" }
           ],
           "fieldConfig": {
             "defaults": {
@@ -37,7 +40,7 @@ data:
           "title": "Cumulative async fetches (success)",
           "gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "targets": [{ "expr": "stepflow_async_fetch_success_count_total", "refId": "A" }],
+          "targets": [{ "expr": "async_fetch_success_count_total", "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "short" } },
           "options": { "colorMode": "value", "graphMode": "area" }
         },
@@ -47,7 +50,7 @@ data:
           "title": "Cumulative async fetches (failure)",
           "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "targets": [{ "expr": "stepflow_async_fetch_failure_count_total", "refId": "A" }],
+          "targets": [{ "expr": "async_fetch_failure_count_total", "refId": "A" }],
           "fieldConfig": {
             "defaults": {
               "unit": "short",
@@ -66,7 +69,7 @@ data:
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
           "options": {
             "mode": "markdown",
-            "content": "**Pending OpenSearch SPI coverage**\n\nThe upstream `_cluster/health`, node-level heap and CPU, indexing-rate, and cluster-state-version metrics are not yet emitted via the OpenSearch telemetry SPI in 3.0.0. They will populate here as core OpenSearch instruments those paths.\n\n**Pending histogram support**\n\nThe rcs-etcd plugin emits `rcs_etcd.blob.{write,read,list}.duration` as exponential histograms. The bundled stepflow-o11y OpenTelemetry Collector contrib (v0.95.0) Prometheus exporter does not currently surface exponential histograms to the scrape endpoint. Counters are unaffected and visible on the rcs-etcd Plugin dashboard."
+            "content": "**Pending OpenSearch SPI coverage**\n\nThe upstream `_cluster/health`, node-level heap and CPU, indexing-rate, and cluster-state-version metrics are not yet emitted via the OpenSearch telemetry SPI in 3.0.0. They will populate here as core OpenSearch instruments those paths.\n\n**Pending histogram support**\n\nThe rcs-etcd plugin emits `rcs_etcd.blob.{write,read,list}.duration` as exponential histograms. The bundled otel-stack OpenTelemetry Collector contrib (v0.95.0) Prometheus exporter does not currently surface exponential histograms to the scrape endpoint. Counters are unaffected and visible on the rcs-etcd Plugin dashboard."
           }
         }
       ]
@@ -92,7 +95,7 @@ data:
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [
             {
-              "expr": "rate(stepflow_rcs_etcd_manifest_publish_total[1m])",
+              "expr": "rate(rcs_etcd_manifest_publish_total[1m])",
               "legendFormat": "publishes/s",
               "refId": "A"
             }
@@ -112,9 +115,9 @@ data:
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [
-            { "expr": "rate(stepflow_rcs_etcd_blob_write_total[1m])", "legendFormat": "writes/s", "refId": "A" },
-            { "expr": "rate(stepflow_rcs_etcd_blob_read_total[1m])",  "legendFormat": "reads/s",  "refId": "B" },
-            { "expr": "rate(stepflow_rcs_etcd_blob_list_total[1m])",  "legendFormat": "lists/s",  "refId": "C" }
+            { "expr": "rate(rcs_etcd_blob_write_total[1m])", "legendFormat": "writes/s", "refId": "A" },
+            { "expr": "rate(rcs_etcd_blob_read_total[1m])",  "legendFormat": "reads/s",  "refId": "B" },
+            { "expr": "rate(rcs_etcd_blob_list_total[1m])",  "legendFormat": "lists/s",  "refId": "C" }
           ],
           "fieldConfig": {
             "defaults": {
@@ -130,7 +133,7 @@ data:
           "title": "Cumulative manifests",
           "gridPos": { "h": 6, "w": 6, "x": 0, "y": 16 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "targets": [{ "expr": "stepflow_rcs_etcd_manifest_publish_total", "refId": "A" }],
+          "targets": [{ "expr": "rcs_etcd_manifest_publish_total", "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" } } },
           "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto" }
         },
@@ -140,7 +143,7 @@ data:
           "title": "Cumulative writes",
           "gridPos": { "h": 6, "w": 6, "x": 6, "y": 16 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "targets": [{ "expr": "stepflow_rcs_etcd_blob_write_total", "refId": "A" }],
+          "targets": [{ "expr": "rcs_etcd_blob_write_total", "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "short" } },
           "options": { "colorMode": "value", "graphMode": "area" }
         },
@@ -150,7 +153,7 @@ data:
           "title": "Cumulative reads",
           "gridPos": { "h": 6, "w": 6, "x": 12, "y": 16 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "targets": [{ "expr": "stepflow_rcs_etcd_blob_read_total", "refId": "A" }],
+          "targets": [{ "expr": "rcs_etcd_blob_read_total", "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "short" } },
           "options": { "colorMode": "value", "graphMode": "area" }
         },
@@ -160,7 +163,7 @@ data:
           "title": "Cumulative lists",
           "gridPos": { "h": 6, "w": 6, "x": 18, "y": 16 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "targets": [{ "expr": "stepflow_rcs_etcd_blob_list_total", "refId": "A" }],
+          "targets": [{ "expr": "rcs_etcd_blob_list_total", "refId": "A" }],
           "fieldConfig": { "defaults": { "unit": "short" } },
           "options": { "colorMode": "value", "graphMode": "area" }
         },
@@ -171,8 +174,8 @@ data:
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [
-            { "expr": "rate(stepflow_otlp_exporter_seen_total[1m])",     "legendFormat": "seen/s",     "refId": "A" },
-            { "expr": "rate(stepflow_otlp_exporter_exported_total[1m])", "legendFormat": "exported/s", "refId": "B" }
+            { "expr": "rate(otlp_exporter_seen_total[1m])",     "legendFormat": "seen/s",     "refId": "A" },
+            { "expr": "rate(otlp_exporter_exported_total[1m])", "legendFormat": "exported/s", "refId": "B" }
           ],
           "fieldConfig": {
             "defaults": {
@@ -188,4 +191,4 @@ kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: grafana-dashboard-rcs-etcd
-  namespace: stepflow-o11y
+  namespace: otel-stack
