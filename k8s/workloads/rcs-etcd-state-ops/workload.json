@@ -1,0 +1,174 @@
+{
+  "version": 2,
+  "description": "rcs-etcd plugin: cluster-state operations exercise. Three phases of cluster-state mutations — diversify (touch every global-metadata blob type), volume (15 replica toggles to trip RETAINED_MANIFESTS cleanup), burst (50 small index create+delete pairs). The fourth phase of make smoke-cluster-state (kubectl scale + manager kill) is driven by the surrounding bash wrapper, not this workload.",
+  "operations": [
+    {
+      "name": "p1-create-pipeline",
+      "operation-type": "put-pipeline",
+      "id": "sm-cs-pl",
+      "body": {
+        "description": "cluster-state smoke",
+        "processors": [{"set": {"field": "exercised", "value": true}}]
+      }
+    },
+    {
+      "name": "p1-create-component-template",
+      "operation-type": "create-component-template",
+      "template": "sm-cs-ct",
+      "body": {
+        "template": {"settings": {"number_of_shards": 1, "number_of_replicas": 1}}
+      }
+    },
+    {
+      "name": "p1-create-index-template",
+      "operation-type": "raw-request",
+      "method": "PUT",
+      "path": "/_index_template/sm-cs-it",
+      "body": {
+        "index_patterns": ["sm-cs-*"],
+        "composed_of": ["sm-cs-ct"]
+      }
+    },
+    {
+      "name": "p1-put-cluster-setting",
+      "operation-type": "put-settings",
+      "body": {
+        "transient": {"cluster.routing.allocation.disk.threshold_enabled": false}
+      }
+    },
+    {
+      "name": "p1-create-index",
+      "operation-type": "create-index",
+      "index": "sm-cs-idx",
+      "body": {
+        "settings": {"number_of_shards": 1, "number_of_replicas": 1}
+      }
+    },
+    {
+      "name": "p1-put-mapping",
+      "operation-type": "raw-request",
+      "method": "PUT",
+      "path": "/sm-cs-idx/_mapping",
+      "body": {
+        "properties": {
+          "field_a": {"type": "keyword"},
+          "field_b": {"type": "long"},
+          "field_c": {"type": "date"}
+        }
+      }
+    },
+    {
+      "name": "p1-put-alias",
+      "operation-type": "raw-request",
+      "method": "POST",
+      "path": "/_aliases",
+      "body": {
+        "actions": [{"add": {"index": "sm-cs-idx", "alias": "sm-cs"}}]
+      }
+    },
+    {
+      "name": "p2-replicas-to-0",
+      "operation-type": "raw-request",
+      "method": "PUT",
+      "path": "/sm-cs-idx/_settings",
+      "body": {"index": {"number_of_replicas": 0}}
+    },
+    {
+      "name": "p2-replicas-to-1",
+      "operation-type": "raw-request",
+      "method": "PUT",
+      "path": "/sm-cs-idx/_settings",
+      "body": {"index": {"number_of_replicas": 1}}
+    },
+    {
+      "name": "p4-create-burst-index",
+      "operation-type": "create-index",
+      "param-source": "burst-index-params",
+      "count": 50
+    },
+    {
+      "name": "p4-delete-burst-index",
+      "operation-type": "delete-index",
+      "param-source": "burst-index-delete",
+      "count": 50
+    },
+    {
+      "name": "cleanup-delete-index",
+      "operation-type": "delete-index",
+      "index": "sm-cs-idx"
+    },
+    {
+      "name": "cleanup-delete-index-template",
+      "operation-type": "raw-request",
+      "method": "DELETE",
+      "path": "/_index_template/sm-cs-it"
+    },
+    {
+      "name": "cleanup-delete-component-template",
+      "operation-type": "delete-component-template",
+      "template": "sm-cs-ct"
+    },
+    {
+      "name": "cleanup-delete-pipeline",
+      "operation-type": "delete-pipeline",
+      "id": "sm-cs-pl"
+    },
+    {
+      "name": "cleanup-reset-cluster-setting",
+      "operation-type": "put-settings",
+      "body": {
+        "transient": {"cluster.routing.allocation.disk.threshold_enabled": null}
+      }
+    }
+  ],
+  "test_procedures": [
+    {
+      "name": "diversify",
+      "default": true,
+      "description": "Phase 1 — touch every global-metadata blob type the plugin writes",
+      "schedule": [
+        {"operation": "p1-create-pipeline"},
+        {"operation": "p1-create-component-template"},
+        {"operation": "p1-create-index-template"},
+        {"operation": "p1-put-cluster-setting"},
+        {"operation": "p1-create-index"},
+        {"operation": "p1-put-mapping"},
+        {"operation": "p1-put-alias"}
+      ]
+    },
+    {
+      "name": "volume",
+      "description": "Phase 2 — 15 alternating replica toggles to trip RETAINED_MANIFESTS cleanup",
+      "schedule": [
+        {"name": "p2-toggle-01", "operation": "p2-replicas-to-0"},
+        {"name": "p2-toggle-02", "operation": "p2-replicas-to-1"},
+        {"name": "p2-toggle-03", "operation": "p2-replicas-to-0"},
+        {"name": "p2-toggle-04", "operation": "p2-replicas-to-1"},
+        {"name": "p2-toggle-05", "operation": "p2-replicas-to-0"},
+        {"name": "p2-toggle-06", "operation": "p2-replicas-to-1"},
+        {"name": "p2-toggle-07", "operation": "p2-replicas-to-0"},
+        {"name": "p2-toggle-08", "operation": "p2-replicas-to-1"},
+        {"name": "p2-toggle-09", "operation": "p2-replicas-to-0"},
+        {"name": "p2-toggle-10", "operation": "p2-replicas-to-1"},
+        {"name": "p2-toggle-11", "operation": "p2-replicas-to-0"},
+        {"name": "p2-toggle-12", "operation": "p2-replicas-to-1"},
+        {"name": "p2-toggle-13", "operation": "p2-replicas-to-0"},
+        {"name": "p2-toggle-14", "operation": "p2-replicas-to-1"},
+        {"name": "p2-toggle-15", "operation": "p2-replicas-to-0"}
+      ]
+    },
+    {
+      "name": "burst",
+      "description": "Phase 4 — 50 small index create+delete pairs; ends with cleanup of phase-1 artifacts",
+      "schedule": [
+        {"operation": "p4-create-burst-index", "iterations": 50},
+        {"operation": "p4-delete-burst-index", "iterations": 50},
+        {"operation": "cleanup-delete-index"},
+        {"operation": "cleanup-delete-index-template"},
+        {"operation": "cleanup-delete-component-template"},
+        {"operation": "cleanup-delete-pipeline"},
+        {"operation": "cleanup-reset-cluster-setting"}
+      ]
+    }
+  ]
+}
