@@ -93,3 +93,83 @@ if [ "$config" = "rcs-etcd" ]; then
     | grep -c . || true)
   echo "METRIC etcd_keys=$keys"
 fi
+
+# --- Prometheus snapshot ----------------------------------------------------
+# Sleep briefly to catch the OTel publish that lands after the benchmark
+# completes, then pull the cumulative counters the dashboards display. If
+# Prometheus is unreachable (otel-stack not running) the values fall back
+# to "n/a" and the summary still renders.
+echo
+echo "==> snapshotting Prometheus counters"
+sleep 12
+
+prom_value() {
+  curl -sf "http://localhost:9090/api/v1/query?query=$1" 2>/dev/null \
+    | python3 -c '
+import sys, json
+try:
+  r = json.load(sys.stdin)
+  result = r["data"]["result"]
+  print(result[0]["value"][1] if result else "0")
+except Exception:
+  print("n/a")
+' 2>/dev/null || echo "n/a"
+}
+
+otlp_exported=$(prom_value otlp_exporter_exported_total)
+async_success=$(prom_value async_fetch_success_count_total)
+async_failure=$(prom_value async_fetch_failure_count_total)
+if [ "$config" = "rcs-etcd" ]; then
+  plugin_publishes=$(prom_value rcs_etcd_manifest_publish_total)
+  plugin_writes=$(prom_value rcs_etcd_blob_write_total)
+  plugin_reads=$(prom_value rcs_etcd_blob_read_total)
+  plugin_lists=$(prom_value rcs_etcd_blob_list_total)
+
+  echo "METRIC rcs_etcd_manifest_publish_total=$plugin_publishes"
+  echo "METRIC rcs_etcd_blob_write_total=$plugin_writes"
+  echo "METRIC rcs_etcd_blob_read_total=$plugin_reads"
+  echo "METRIC rcs_etcd_blob_list_total=$plugin_lists"
+fi
+echo "METRIC async_fetch_success_count_total=$async_success"
+echo "METRIC async_fetch_failure_count_total=$async_failure"
+echo "METRIC otlp_exporter_exported_total=$otlp_exported"
+
+# --- Summary block ----------------------------------------------------------
+# Aligned, fenced output designed for copy-paste into markdown / docs.
+cat <<EOF
+
+\`\`\`
+========================================================================
+ Smoke summary — config: $config
+========================================================================
+
+ Lifecycle (one-shot, captured during bring-up + smoke)
+EOF
+printf "   %-36s %s\n" "time_to_green_seconds" "${green:-n/a}"
+if [ "$config" = "rcs-etcd" ]; then
+  printf "   %-36s %s\n" "time_to_first_publish_seconds" "${publish:-n/a}"
+fi
+printf "   %-36s %s\n" "time_to_first_index_ack_ms" "${ack_ms:-n/a}"
+echo
+if [ "$config" = "rcs-etcd" ]; then
+  echo " Plugin counters (cumulative since cluster start)"
+  printf "   %-36s %s\n" "rcs_etcd_manifest_publish_total" "${plugin_publishes:-n/a}"
+  printf "   %-36s %s\n" "rcs_etcd_blob_write_total" "${plugin_writes:-n/a}"
+  printf "   %-36s %s\n" "rcs_etcd_blob_read_total" "${plugin_reads:-n/a}"
+  printf "   %-36s %s\n" "rcs_etcd_blob_list_total" "${plugin_lists:-n/a}"
+  echo
+fi
+echo " OpenSearch + telemetry counters"
+printf "   %-36s %s\n" "async_fetch_success_count_total" "${async_success:-n/a}"
+printf "   %-36s %s\n" "async_fetch_failure_count_total" "${async_failure:-n/a}"
+printf "   %-36s %s\n" "otlp_exporter_exported_total" "${otlp_exported:-n/a}"
+if [ "$config" = "rcs-etcd" ]; then
+  echo
+  echo " Storage"
+  printf "   %-36s %s\n" "etcd_keys" "${keys:-n/a}"
+fi
+cat <<EOF
+
+========================================================================
+\`\`\`
+EOF

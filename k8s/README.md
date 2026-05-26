@@ -98,21 +98,85 @@ sidecar in each OpenSearch pod listens on that port and forwards
 traces and metrics to the otel-stack collector. The sidecar
 config is `common/otel-sidecar.yaml`.
 
-## Smoke metrics
+## Telemetry surfaces
 
-Each `smoke` run emits parseable `METRIC <name>=<value>` lines on
-stdout:
+There are two complementary surfaces for observing what each
+configuration does. They answer different questions and live in
+different places.
 
-| Metric | When emitted | Source |
-|--------|--------------|--------|
-| `time_to_green_seconds` | both configs | Captured by `bring-up.sh` |
-| `time_to_first_publish_seconds` | rcs-etcd only | Captured by `bring-up.sh` (waits for first `manifest__` key) |
-| `time_to_first_index_ack_ms` | both configs | Measured by `smoke.sh` via a `PUT smoke-idx` |
-| `etcd_keys` | rcs-etcd only | Final etcd keyspace count |
+### Lifecycle metrics (one-shot, from `make smoke` stdout)
 
-The bring-up timings persist as annotations on the
-`opensearch-config` ConfigMap so successive `smoke` runs replay
-them without re-bootstrapping.
+Captured by `bring-up.sh` (during cluster formation) and `smoke.sh`
+(during the smoke run). One value each per run. Useful as comparison
+numbers in a report.
+
+| Metric | When | Source |
+|--------|------|--------|
+| `time_to_green_seconds` | both configs | Wall-clock from `kubectl apply` to all three pods Ready |
+| `time_to_first_publish_seconds` | rcs-etcd only | Wall-clock from `kubectl apply` to first `manifest__` key in etcd |
+| `time_to_first_index_ack_ms` | both configs | Latency of a `PUT smoke-idx` against `localhost:9200` |
+| `etcd_keys` | rcs-etcd only | Final keyspace count under `/opensearch-rcs/` |
+
+Bring-up timings persist as annotations on the `opensearch-config`
+ConfigMap so successive `smoke` runs replay them without
+re-bootstrapping.
+
+### Continuous metrics (Prometheus / Grafana dashboards)
+
+Pushed by OpenSearch via OTLP through the per-pod sidecar to the
+otel-stack collector, scraped by Prometheus, rendered on the
+**rcs-etcd Plugin** and **OpenSearch Cluster** dashboards under the
+`rcs-etcd` folder in Grafana. Rate and cumulative shapes over time.
+Useful for watching what the cluster is doing while a smoke runs.
+
+Headline series:
+
+- `rcs_etcd_manifest_publish_total` — counter; rate is the headline
+  view of the RCS-via-etcd publish path.
+- `rcs_etcd_blob_{write,read,list}_total` — counters per blob op.
+- `async_fetch_{success,failure}_count_total` — OpenSearch core
+  shard-fetch activity (one of the few core operations instrumented
+  via the SPI at 3.0.0).
+- `otlp_exporter_exported_total` — pipeline health: data points
+  leaving the sidecar collector.
+
+### Bridge: the smoke summary block
+
+After the benchmark completes, `smoke.sh` snapshots the Prometheus
+counters above and prints a single fenced block combining the
+lifecycle measurements with the cumulative counter values. The block
+is markdown-paste-ready — drop it into a comparison doc verbatim:
+
+```
+========================================================================
+ Smoke summary — config: rcs-etcd
+========================================================================
+
+ Lifecycle (one-shot, captured during bring-up + smoke)
+   time_to_green_seconds                130
+   time_to_first_publish_seconds        130
+   time_to_first_index_ack_ms           212
+
+ Plugin counters (cumulative since cluster start)
+   rcs_etcd_manifest_publish_total      118
+   rcs_etcd_blob_write_total            253
+   rcs_etcd_blob_read_total             137
+   rcs_etcd_blob_list_total             4
+
+ OpenSearch + telemetry counters
+   async_fetch_success_count_total      3
+   async_fetch_failure_count_total      0
+   otlp_exporter_exported_total         588
+
+ Storage
+   etcd_keys                            66
+
+========================================================================
+```
+
+Counter values are "n/a" if Prometheus isn't reachable (otel-stack
+not deployed). The individual `METRIC <name>=<value>` lines remain on
+stdout above the block for downstream parsing.
 
 ## Out of scope
 
