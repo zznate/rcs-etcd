@@ -209,6 +209,35 @@ The summary block follows the same fenced shape as `make smoke`,
 with per-phase deltas for cluster-state version (manager-
 authoritative, monotonic across restarts) and etcd keyspace.
 
+## Failover suite (`make failover-suite`)
+
+Automated assertions that the rcs-etcd cluster recovers correctly
+when its elected `cluster_manager` pod is killed. Distinct from the
+smoke tests — these scenarios emit explicit PASS / FAIL with a
+non-zero exit code so they integrate cleanly with CI.
+
+Two scenarios:
+
+- **scenario-clean-kill** (`make failover-clean-kill`) — kills the
+  elected manager, measures `manager_reelection_seconds`,
+  `cluster_green_after_kill_seconds`, and (when `WAIT_FOR_REJOIN=1`,
+  the default) `fully_recovered_seconds`. Asserts each against an
+  SLA. Tune via `SLA_REELECTION` / `SLA_GREEN_AFTER_KILL` /
+  `SLA_FULL_RECOVERY` env vars.
+- **scenario-state-diff** (`make failover-state-diff`) — creates a
+  known set of declarative artifacts (index, mapping, alias, ingest
+  pipeline, index template, transient cluster setting), kills the
+  manager, waits for full recovery, then diffs cluster state. The
+  Python `state_diff.py` strips fields that legitimately change
+  across an election (`master_node` / `cluster_manager_node`,
+  `state_uuid`, `nodes.*`, `routing_table.*`, `primary_terms`,
+  `in_sync_allocations`, version counters, etc.) and exits non-zero
+  if any user-declared artifact diverges.
+
+Full suite runs both sequentially; ~75s total on a healthy cluster.
+See `k8s/failover/README.md` for the design rationale and the
+deferred follow-on scenarios.
+
 ## Out of scope
 
 Failover automation — killing an elected cluster_manager and

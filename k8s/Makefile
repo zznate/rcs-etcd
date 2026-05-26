@@ -19,7 +19,7 @@ SIBLINGS := $(realpath $(REPO_ROOT)/..)
 OSB_REPO ?= $(SIBLINGS)/opensearch-benchmark
 OSB_WORKLOADS ?= $(SIBLINGS)/opensearch-benchmark-workloads
 
-.PHONY: help cluster otel-stack image benchmark-setup up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd smoke smoke-cluster-state down clean
+.PHONY: help cluster otel-stack image benchmark-setup up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd smoke smoke-cluster-state failover-suite failover-clean-kill failover-state-diff down clean
 
 help:
 	@echo "Targets:"
@@ -33,6 +33,9 @@ help:
 	@echo "  switch-to-rcs-etcd   down + up-rcs-etcd"
 	@echo "  smoke                Run the benchmark + emit METRIC lines for the active config"
 	@echo "  smoke-cluster-state  Longer (~3-4 min) exercise of cluster-state ops + topology + read-path"
+	@echo "  failover-suite       Run all failover scenarios with PASS/FAIL assertions"
+	@echo "  failover-clean-kill  Scenario 1 only — kill manager + SLA assertion"
+	@echo "  failover-state-diff  Scenario 2 only — declarative state diff across kill"
 	@echo "  down                 Delete the rcs-etcd-poc namespace (otel-stack is untouched)"
 	@echo "  clean                down + remove the Kind-loaded image"
 
@@ -96,6 +99,16 @@ smoke:
 
 smoke-cluster-state:
 	bash $(CURDIR)/smoke-cluster-state.sh
+
+failover-clean-kill:
+	bash $(CURDIR)/failover/scenario-clean-kill.sh
+
+failover-state-diff:
+	bash $(CURDIR)/failover/scenario-state-diff.sh
+
+failover-suite: failover-clean-kill failover-state-diff
+	@echo
+	@echo "==> Failover suite complete (all scenarios passed)"
 
 down:
 	kubectl delete namespace $(NAMESPACE) --ignore-not-found
