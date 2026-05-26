@@ -50,20 +50,38 @@ t1=$(date +%s%N)
 ack_ms=$(( (t1 - t0) / 1000000 ))
 echo "METRIC time_to_first_index_ack_ms=$ack_ms"
 
+# Resolve the benchmark CLI. `make benchmark-setup` is the canonical
+# installer (user-local via the sibling opensearch-benchmark checkout);
+# this lookup also accepts a system pip install on PATH. The workloads
+# checkout is expected next to this repo at ../../opensearch-benchmark-
+# workloads/ — override either path with OSB_REPO / OSB_WORKLOADS.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SIBLINGS="$(cd "$SCRIPT_DIR/../.." && pwd)"
+OSB_WORKLOADS="${OSB_WORKLOADS:-$SIBLINGS/opensearch-benchmark-workloads}"
+
 if command -v opensearch-benchmark >/dev/null 2>&1; then
+  OSB_CMD=(opensearch-benchmark)
+elif [ -x "$HOME/.local/bin/opensearch-benchmark" ]; then
+  OSB_CMD=("$HOME/.local/bin/opensearch-benchmark")
+else
+  OSB_CMD=()
+fi
+
+if [ ${#OSB_CMD[@]} -gt 0 ] && [ -d "$OSB_WORKLOADS/geonames" ]; then
   echo "==> running geonames --test-mode"
-  WORKLOADS="${OSB_WORKLOADS:-$HOME/Documents/GitHub/opensearch-benchmark-workloads}"
-  opensearch-benchmark execute-test \
-    --workload=geonames \
-    --workload-path="$WORKLOADS/geonames" \
+  "${OSB_CMD[@]}" run \
+    --workload-path="$OSB_WORKLOADS/geonames" \
     --test-mode \
     --target-hosts="http://localhost:9200" \
     --pipeline=benchmark-only \
     --client-options='use_ssl:false,verify_certs:false' \
     --results-format=markdown 2>&1 | tail -40
 else
-  echo "WARN: opensearch-benchmark not installed — skipping benchmark run."
-  echo "       pip install opensearch-benchmark to enable."
+  if [ ${#OSB_CMD[@]} -eq 0 ]; then
+    echo "WARN: opensearch-benchmark not found — run 'make benchmark-setup' first."
+  else
+    echo "WARN: geonames workload missing at $OSB_WORKLOADS/geonames — skipping benchmark."
+  fi
 fi
 
 # Cleanup the smoke index so successive runs start from the same state.

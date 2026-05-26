@@ -15,13 +15,18 @@ NAMESPACE := rcs-etcd-poc
 # every kind invocation that touches the cluster's containers.
 export KIND_EXPERIMENTAL_PROVIDER := podman
 
-.PHONY: help cluster otel-stack image up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd smoke down clean
+SIBLINGS := $(realpath $(REPO_ROOT)/..)
+OSB_REPO ?= $(SIBLINGS)/opensearch-benchmark
+OSB_WORKLOADS ?= $(SIBLINGS)/opensearch-benchmark-workloads
+
+.PHONY: help cluster otel-stack image benchmark-setup up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd smoke down clean
 
 help:
 	@echo "Targets:"
 	@echo "  cluster              Create the opensearch-testing Kind cluster + namespaces (refuses to recreate)"
 	@echo "  otel-stack           Deploy the self-contained otel-stack (OTel + Prometheus + Grafana + Jaeger + Loki + Promtail)"
 	@echo "  image                Build the rcs-etcd plugin + testbed image, load into Kind"
+	@echo "  benchmark-setup      Install opensearch-benchmark (user-local) from the sibling checkout"
 	@echo "  up-vanilla           Apply common + vanilla; wait for green; record timings"
 	@echo "  up-rcs-etcd          Apply common + rcs-etcd; wait for green and first manifest publish"
 	@echo "  switch-to-vanilla    down + up-vanilla"
@@ -67,6 +72,23 @@ up-rcs-etcd:
 switch-to-vanilla: down up-vanilla
 
 switch-to-rcs-etcd: down up-rcs-etcd
+
+benchmark-setup:
+	@test -d $(OSB_REPO) || { \
+	  echo "ERROR: $(OSB_REPO) not found."; \
+	  echo "       Clone the runner next to this repo:"; \
+	  echo "         git clone https://github.com/opensearch-project/opensearch-benchmark.git $(OSB_REPO)"; \
+	  exit 1; \
+	}
+	@test -d $(OSB_WORKLOADS) || { \
+	  echo "ERROR: $(OSB_WORKLOADS) not found."; \
+	  echo "       Clone the workloads next to this repo:"; \
+	  echo "         git clone https://github.com/opensearch-project/opensearch-benchmark-workloads.git $(OSB_WORKLOADS)"; \
+	  exit 1; \
+	}
+	@echo "==> installing opensearch-benchmark (user-local) from $(OSB_REPO)"
+	cd $(OSB_REPO) && python3 -m pip install --user --upgrade --editable '.[develop]'
+	@echo "==> opensearch-benchmark installed at $$HOME/.local/bin/opensearch-benchmark"
 
 smoke:
 	bash $(CURDIR)/smoke.sh

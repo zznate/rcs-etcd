@@ -15,12 +15,14 @@ them tears down one and brings up the other in the same namespace.
   `KIND_EXPERIMENTAL_PROVIDER=podman` from the Makefile.
 - `kubectl` configured to talk to the local kubelet.
 - JDK 21 (for the Gradle plugin build).
-- `opensearch-benchmark` (`pip install opensearch-benchmark`) and a
-  checkout of `opensearch-benchmark-workloads` for the `geonames`
-  workload. The smoke script defaults to
-  `~/Documents/GitHub/opensearch-benchmark-workloads`; override with
-  `OSB_WORKLOADS`. The smoke prints a warning and skips the benchmark
-  if the CLI is missing.
+- Clones of `opensearch-project/opensearch-benchmark` and
+  `opensearch-project/opensearch-benchmark-workloads` at `../../`
+  (siblings to this repo). `make benchmark-setup` installs the runner
+  user-locally to `~/.local/bin/opensearch-benchmark` from the sibling
+  checkout. Override the paths with `OSB_REPO` / `OSB_WORKLOADS` if you
+  keep them elsewhere. `~/.local/bin` must be on `PATH` for `make smoke`
+  to find the binary; the smoke script also probes that directory as a
+  fallback.
 
 ## Layout
 
@@ -41,14 +43,15 @@ k8s/
 
 ```sh
 cd k8s
-make cluster        # creates `opensearch-testing` Kind cluster + namespaces
-make otel-stack     # deploys the bundled observability stack (includes rcs-etcd dashboards)
-make image          # builds the plugin zip, the image, and kind-loads it
-make up-rcs-etcd    # brings up the rcs-etcd configuration; records timings
-make smoke          # replays timings + runs the benchmark + dumps etcd keys
+make cluster          # creates `opensearch-testing` Kind cluster + namespaces
+make otel-stack       # deploys the bundled observability stack (includes rcs-etcd dashboards)
+make image            # builds the plugin zip, the image, and kind-loads it
+make benchmark-setup  # one-time: user-local install of opensearch-benchmark
+make up-rcs-etcd      # brings up the rcs-etcd configuration; records timings
+make smoke            # replays timings + runs the benchmark + dumps etcd keys
 make switch-to-vanilla
-make smoke          # same metrics under vanilla for comparison
-make down           # tears down rcs-etcd-poc, leaves otel-stack running
+make smoke            # same metrics under vanilla for comparison
+make down             # tears down rcs-etcd-poc, leaves otel-stack running
 ```
 
 `make cluster` refuses to run if a Kind cluster named
