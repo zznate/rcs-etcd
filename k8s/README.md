@@ -178,6 +178,37 @@ Counter values are "n/a" if Prometheus isn't reachable (otel-stack
 not deployed). The individual `METRIC <name>=<value>` lines remain on
 stdout above the block for downstream parsing.
 
+## Extended smoke (`make smoke-cluster-state`)
+
+A longer (~3–4 min) exercise of the cluster-state path, separate
+from `make smoke`. Four phases:
+
+- **diversify** — touch every global-metadata blob type the plugin
+  writes (ingest pipeline, component + index templates, cluster
+  setting, index, mapping, alias).
+- **volume** — 15 alternating replica toggles to trip the hardcoded
+  `RETAINED_MANIFESTS = 10` cleanup path.
+- **burst** — 50 small `create-index` + `delete-index` pairs.
+- **topology** — `kubectl scale` the StatefulSet down to 2, back to
+  3, then `kubectl delete pod <current-cluster-manager>` to force a
+  re-election. Records `manager_reelection_seconds`.
+
+The first three phases run as a custom `opensearch-benchmark`
+workload at `k8s/workloads/rcs-etcd-state-ops/`, with one
+`test-procedure` per phase (`diversify`, `volume`, `burst`). Most
+ops use OSB's native operation types (`put-pipeline`,
+`create-component-template`, `create-index`, etc.); the few whose
+native runners reference opensearch-py methods missing in the
+current 2.x client fall back to `raw-request`. A small
+`workload.py` registers a param source that cycles `burst-0` …
+`burst-49` for the burst phase. Per-op latency histograms land in
+`~/.osb/benchmarks/test_runs/<id>/`.
+
+The topology phase stays in bash because OSB can't drive kubectl.
+The summary block follows the same fenced shape as `make smoke`,
+with per-phase deltas for cluster-state version (manager-
+authoritative, monotonic across restarts) and etcd keyspace.
+
 ## Out of scope
 
 Failover automation — killing an elected cluster_manager and
