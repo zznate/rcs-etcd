@@ -31,3 +31,7 @@ secrets/
 # Logs
 *.log
 /logs/
+
+# Python (OSB workload caches)
+__pycache__/
+*.pyc
