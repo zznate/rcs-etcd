@@ -19,7 +19,7 @@ SIBLINGS := $(realpath $(REPO_ROOT)/..)
 OSB_REPO ?= $(SIBLINGS)/opensearch-benchmark
 OSB_WORKLOADS ?= $(SIBLINGS)/opensearch-benchmark-workloads
 
-.PHONY: help cluster otel-stack image benchmark-setup up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd smoke down clean
+.PHONY: help cluster otel-stack image benchmark-setup up-vanilla up-rcs-etcd switch-to-vanilla switch-to-rcs-etcd smoke smoke-cluster-state down clean
 
 help:
 	@echo "Targets:"
@@ -32,6 +32,7 @@ help:
 	@echo "  switch-to-vanilla    down + up-vanilla"
 	@echo "  switch-to-rcs-etcd   down + up-rcs-etcd"
 	@echo "  smoke                Run the benchmark + emit METRIC lines for the active config"
+	@echo "  smoke-cluster-state  Longer (~3-4 min) exercise of cluster-state ops + topology + read-path"
 	@echo "  down                 Delete the rcs-etcd-poc namespace (otel-stack is untouched)"
 	@echo "  clean                down + remove the Kind-loaded image"
 
@@ -92,6 +93,9 @@ benchmark-setup:
 
 smoke:
 	bash $(CURDIR)/smoke.sh
+
+smoke-cluster-state:
+	bash $(CURDIR)/smoke-cluster-state.sh
 
 down:
 	kubectl delete namespace $(NAMESPACE) --ignore-not-found
