@@ -34,19 +34,19 @@ configurations {
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
-// Versions pinned to match OpenSearch 3.0.0's libs.versions.toml so classpath
+// Versions pinned to match OpenSearch 3.6.0's libs.versions.toml so classpath
 // resolution doesn't bring two copies of grpc/netty/guava when run inside the test JVM.
 ext {
-    grpcVersion     = '1.68.2'
-    // jetcd 0.8.6 pulls Vert.x 5.0.5, which requires Netty 4.2+ (uses
-    // io.netty.channel.MultiThreadIoEventLoopGroup, added in 4.2). OpenSearch
-    // 3.0.0 itself ships Netty 4.1.118.Final; the plugin classloader is isolated,
-    // so the plugin's Netty 4.2 does not clash with core's transport stack.
-    nettyVersion    = '4.2.13.Final'
+    grpcVersion     = '1.75.0'
+    // OpenSearch 3.6.0 ships Netty 4.2.12.Final; matching pins keep the
+    // failOnVersionConflict() resolution clean. jetcd 0.8.6 / Vert.x 5.0.5
+    // require Netty 4.2+ (MultiThreadIoEventLoopGroup), so the 4.2.x line
+    // satisfies both sides.
+    nettyVersion    = '4.2.12.Final'
     guavaVersion    = '33.2.1-jre'
-    protobufVersion = '3.25.5'
+    protobufVersion = '3.25.8'
     failsafeVersion = '3.3.2'
-    slf4jVersion    = '1.7.36'
+    slf4jVersion    = '2.0.17'
     vertxVersion    = '5.0.5'
 }
 

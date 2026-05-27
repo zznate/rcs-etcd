@@ -4,7 +4,7 @@
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty('opensearch.version', '3.0.0')
+        opensearch_version = System.getProperty('opensearch.version', '3.6.0')
         // Plugin version follows the four-segment OpenSearch plugin convention:
         // <opensearch-version>.<plugin-revision>
         plugin_revision = System.getProperty('plugin.revision', '0')
@@ -22,7 +22,7 @@ buildscript {
 ext {
     commonVersions = [
         jetcd  : '0.8.6',
-        mockito: '5.16.1'
+        mockito: '5.20.0'
     ]
 }
 
