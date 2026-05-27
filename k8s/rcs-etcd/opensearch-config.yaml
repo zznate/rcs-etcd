@@ -28,6 +28,14 @@ data:
 
     bootstrap.memory_lock: false
 
+    # Relaxed disk watermarks for the local Kind testbed: the Kind node's
+    # rootfs is shared with podman storage and other workloads, so the
+    # production-grade 85/90/95 defaults trip shard allocation in
+    # environments that are otherwise healthy.
+    cluster.routing.allocation.disk.watermark.low: 90%
+    cluster.routing.allocation.disk.watermark.high: 95%
+    cluster.routing.allocation.disk.watermark.flood_stage: 98%
+
     # Remote Cluster State backed by etcd via the rcs-etcd plugin.
     # The `node.attr.remote_store.repository.etcd-rcs.settings.location`
     # value is required by RemoteStoreNodeAttribute but ignored by the
