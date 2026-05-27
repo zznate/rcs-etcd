@@ -5,9 +5,9 @@
 NAMESPACE=${NAMESPACE:-rcs-etcd-poc}
 OS=${OS:-http://localhost:9200}
 
-# Resolve the current cluster_manager pod name via the _cat/master API.
+# Resolve the current cluster_manager pod name via the _cat/cluster_manager API.
 current_manager() {
-  curl -sf "$OS/_cat/master?format=json" 2>/dev/null \
+  curl -sf "$OS/_cat/cluster_manager?format=json" 2>/dev/null \
     | python3 -c 'import sys, json
 data = json.load(sys.stdin)
 print(data[0]["node"] if data else "")' 2>/dev/null

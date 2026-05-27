@@ -35,6 +35,7 @@ IGNORED = [
     ("routing_nodes",),
     ("metadata", "indices", "*", "in_sync_allocations"),
     ("metadata", "indices", "*", "primary_terms"),
+    ("metadata", "indices", "*", "primary_terms_map"),
     # Per-index opaque version counters that bump even without
     # user-visible changes (mapping/settings/aliases internal v#s).
     ("metadata", "indices", "*", "version"),

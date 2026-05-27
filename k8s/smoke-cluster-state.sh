@@ -81,7 +81,7 @@ etcd_key_count() {
 }
 
 current_manager() {
-  curl -sf "$OS/_cat/master?format=json" 2>/dev/null \
+  curl -sf "$OS/_cat/cluster_manager?format=json" 2>/dev/null \
     | python3 -c 'import sys, json; print(json.load(sys.stdin)[0]["node"])' 2>/dev/null
 }
 
