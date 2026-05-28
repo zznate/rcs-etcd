@@ -49,6 +49,24 @@ data:
     node.attr.remote_store.repository.etcd-rcs.type: etcd
     node.attr.remote_store.repository.etcd-rcs.settings.location: /
 
+    # Validate every cluster-state blob round-trip through etcd. `failure`
+    # hard-fails a publish on a checksum mismatch, surfacing any serialization
+    # or round-trip bug in the etcd BlobContainer immediately. Default is none.
+    cluster.remote_store.state.checksum_validation.mode: failure
+
+    # FIXED path layout instead of the HASHED_PREFIX default. The hashing is an
+    # S3 hot-partition mitigation that buys etcd nothing; FIXED yields shorter
+    # keys that sort contiguously per cluster, improving listBlobsByPrefix
+    # range-scan locality and etcdctl inspection.
+    cluster.remote_store.index_metadata.path_type: FIXED
+    cluster.remote_store.routing_table.path_type: FIXED
+
+    # Enable remote publication: followers download cluster state from etcd
+    # instead of over transport, exercising the follower read path through the
+    # etcd BlobContainer. The other two preconditions (state.enabled and the
+    # routing_table repository attribute) are already satisfied above.
+    cluster.remote_store.publication.enabled: true
+
     # Telemetry: identical to the vanilla configuration. The OTLP
     # endpoint is supplied via OTEL_EXPORTER_OTLP_ENDPOINT on the
     # container, not as an OpenSearch setting.
